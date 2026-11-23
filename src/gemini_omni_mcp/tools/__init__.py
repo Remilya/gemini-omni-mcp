@@ -5,6 +5,8 @@ from __future__ import annotations
 CORE_TOOL_NAMES = (
     "gemini_search_docs",
     "gemini_fetch_doc",
+    "gemini_analyze",
+    "gemini_files",
     "gemini_decide",
     "gemini_deep_research",
     "gemini_embed",

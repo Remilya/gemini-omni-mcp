@@ -327,6 +327,22 @@ def get_pricing_rates(
             "cache_per_1m": round(0.025 * tier_mult, 4),
         }
 
+    if "gemma-4" in m:
+        if "31b" in m:
+            canonical = "gemma-4-31b-it"
+        elif "26b" in m:
+            canonical = "gemma-4-26b-a4b-it"
+        else:
+            canonical = m
+        return {
+            "model": canonical,
+            "tier": "free",
+            "free_tier_only": True,
+            "input_per_1m": 0.0,
+            "output_per_1m": 0.0,
+            "cache_per_1m": 0.0,
+        }
+
     # Default fallback to Gemini 4 Hydrogen rates
     return {
         "model": model,

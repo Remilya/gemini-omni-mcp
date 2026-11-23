@@ -16,12 +16,14 @@ except ImportError:
 from gemini_omni_mcp import __version__
 from gemini_omni_mcp.config import is_3d_tools_enabled, logger
 from gemini_omni_mcp.tools import (
+    analyze,
     audio,
     budget,
     cad_3d,
     decisions,
     docs,
     embeddings,
+    files,
     image,
     research,
     swarm,
@@ -35,6 +37,8 @@ def create_server(enable_3d_tools: Optional[bool] = None) -> FastMCP:
     mcp = FastMCP("gemini-omni")
 
     docs.register(mcp)
+    analyze.register(mcp)
+    files.register(mcp)
     decisions.register(mcp)
     research.register(mcp)
     embeddings.register(mcp)
@@ -55,7 +59,7 @@ def create_server(enable_3d_tools: Optional[bool] = None) -> FastMCP:
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="gemini-omni-mcp",
-        description="All-in-one Google GenAI Multimodal, Decisions & Live Docs MCP Server.",
+        description="All-in-one Google GenAI Multimodal, Decisions, Analyze, Files & Live Docs MCP Server.",
     )
     parser.add_argument(
         "--transport",
@@ -66,7 +70,7 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--no-3d-tools",
         action="store_true",
-        help="Disable the 3 optional 3D/CAD tools and run in lean 13-tool mode.",
+        help="Disable the 3 optional 3D/CAD tools and run in lean 15-tool mode.",
     )
     parser.add_argument(
         "--workspace",

@@ -1,4 +1,4 @@
-"""Validation tests for the Antigravity plugin manifest, mcp_config, and SKILL.md."""
+"""Validation tests for all 4 IDE plugin manifests, mcp_config, and SKILL.md."""
 
 from __future__ import annotations
 
@@ -21,7 +21,7 @@ ALLOWED_PLUGIN_TOP_LEVEL_KEYS = {
 }
 
 
-def test_plugin_json_strict_schema():
+def test_antigravity_plugin_json_strict_schema():
     plugin_path = REPO_ROOT / "plugin.json"
     assert plugin_path.is_file()
     data = json.loads(plugin_path.read_text(encoding="utf-8"))
@@ -29,12 +29,30 @@ def test_plugin_json_strict_schema():
     unknown_keys = set(data.keys()) - ALLOWED_PLUGIN_TOP_LEVEL_KEYS
     assert not unknown_keys, f"Unsupported top-level keys in plugin.json: {unknown_keys}"
     assert data["name"] == "gemini-omni"
+    assert data["version"] == "2.1.0"
     assert isinstance(data["description"], str) and len(data["description"]) > 10
     assert isinstance(data["suggestedPrompts"], list)
     assert 1 <= len(data["suggestedPrompts"]) <= 3
 
     logo_path = REPO_ROOT / data["logo"]
     assert logo_path.is_file(), f"Missing plugin logo: {logo_path}"
+
+
+def test_cross_ide_plugin_manifests():
+    for rel_path, expects_skills in (
+        (".claude-plugin/plugin.json", False),
+        (".cursor-plugin/plugin.json", True),
+        (".codex-plugin/plugin.json", True),
+    ):
+        p = REPO_ROOT / rel_path
+        assert p.is_file(), f"Missing manifest: {p}"
+        data = json.loads(p.read_text(encoding="utf-8"))
+        assert data["name"] == "gemini-omni"
+        assert data["version"] == "2.1.0"
+        assert data["license"] == "MIT"
+        assert data["repository"] == "https://github.com/Remilya/gemini-omni-mcp"
+        if expects_skills:
+            assert data.get("skills") == "./skills"
 
 
 def test_mcp_config_json_valid():

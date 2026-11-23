@@ -12,20 +12,20 @@ from gemini_omni_mcp.tools.budget import gemini_cost_and_budget
 from gemini_omni_mcp.tools.swarm import gemini_async_swarm
 
 
-def test_server_registers_all_16_tools_by_default():
+def test_server_registers_all_18_tools_by_default():
     server = create_server(enable_3d_tools=True)
     tools = asyncio.run(server.list_tools())
     names = {t.name for t in tools}
     assert names == set(CORE_TOOL_NAMES) | set(OPTIONAL_3D_TOOL_NAMES)
-    assert len(names) == 16
+    assert len(names) == 18
 
 
-def test_server_registers_13_core_tools_when_3d_disabled():
+def test_server_registers_15_core_tools_when_3d_disabled():
     server = create_server(enable_3d_tools=False)
     tools = asyncio.run(server.list_tools())
     names = {t.name for t in tools}
     assert names == set(CORE_TOOL_NAMES)
-    assert len(names) == 13
+    assert len(names) == 15
     for excluded in OPTIONAL_3D_TOOL_NAMES:
         assert excluded not in names
 
@@ -39,6 +39,8 @@ def test_budget_tool_offline_actions():
         "gemini-decision-1",
         "gemini-3.5-transcribe",
         "gemini-omni-1.2-flash",
+        "gemma-4-31b-it",
+        "gemma-4-26b-a4b-it",
     ):
         assert expected in pricing["models"]
 

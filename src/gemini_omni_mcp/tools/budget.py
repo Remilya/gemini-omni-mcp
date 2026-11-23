@@ -1,9 +1,11 @@
-"""Real-time USD spend ledger, pricing calculator, batch estimator, and hard-stop budget tool."""
+"""Real-time USD spend ledger, pricing calculator, live model catalog, and budget kill-switch."""
 
 from __future__ import annotations
 
+import asyncio
 from typing import Any, Literal, Optional
 
+from gemini_omni_mcp.client import get_client
 from gemini_omni_mcp.config import get_ledger_path, load_dotenv_if_present
 from gemini_omni_mcp.pricing import (
     PRICING_SOURCE_URL,
@@ -41,16 +43,35 @@ SUPPORTED_MODELS = (
     "gemini-embedding-2",
     "lyria-3.5",
     "lyria-3-clip-preview",
+    "gemma-4-31b-it",
+    "gemma-4-26b-a4b-it",
     "gemini-3.8-flash",
     "gemini-3.6-flash",
     "gemini-3.1-pro-preview",
 )
 
 
+def _serialize_model_info(m: Any) -> dict[str, Any]:
+    actions = (
+        getattr(m, "supported_actions", None)
+        or getattr(m, "supported_generation_methods", None)
+        or []
+    )
+    return {
+        "name": getattr(m, "name", None),
+        "display_name": getattr(m, "display_name", None),
+        "description": getattr(m, "description", None),
+        "input_token_limit": getattr(m, "input_token_limit", None),
+        "output_token_limit": getattr(m, "output_token_limit", None),
+        "supported_actions": list(actions) if actions else [],
+    }
+
+
 async def gemini_cost_and_budget(
     action: Literal[
         "summary",
         "pricing_table",
+        "live_models",
         "calculate_call",
         "estimate_batch",
         "set_budget_limit",
@@ -79,12 +100,16 @@ async def gemini_cost_and_budget(
     new_budget_limit_usd: Optional[float] = None,
     record_to_ledger: bool = False,
     note: str = "",
+    model_filter: Optional[str] = None,
+    model_id: Optional[str] = None,
+    page_size: int = 50,
 ) -> dict[str, Any]:
-    """Gemini API price calculator, batch cost estimator, and real-time USD budget kill-switch.
+    """Gemini API price calculator, batch estimator, live model catalog, & USD budget kill-switch.
 
     Actions:
       - `summary`: Return cumulative session spend, breakdowns (`by_model`, `by_tool`), and recent entries.
-      - `pricing_table`: Return standard and batch rates across all active Gemini 4, Decisions, Media, and 3.x models.
+      - `pricing_table`: Return standard and batch rates across all 26 Gemini 4, Gemma 4, Decisions, and media models.
+      - `live_models`: Query `client.models.list()` / `client.models.get()` for live API model metadata & token limits.
       - `calculate_call`: Compute exact USD cost for a single API call (optionally recording to ledger).
       - `estimate_batch`: Compare Standard vs Batch/Flex costs for `num_items` workloads.
       - `set_budget_limit`: Update `hard_stop_limit_usd` (`0` disables hard stop; raising above current spend unlocks).
@@ -108,6 +133,36 @@ async def gemini_cost_and_budget(
             "hard_stop_limit_usd": ledger["hard_stop_limit_usd"],
             "hard_stop_triggered": bool(ledger["hard_stop_triggered"]),
             "totals": ledger["totals"],
+        }
+
+    if action == "live_models":
+        client = get_client(context="gemini_cost_and_budget:live_models")
+        if model_id and model_id.strip():
+            m_obj = await asyncio.to_thread(client.models.get, model=model_id.strip())
+            return {"status": "success", "model": _serialize_model_info(m_obj)}
+
+        cap = max(1, min(int(page_size), 200))
+        needle = (model_filter or "").strip().lower()
+
+        def _fetch_models() -> list[dict[str, Any]]:
+            out: list[dict[str, Any]] = []
+            for m_obj in client.models.list():
+                info = _serialize_model_info(m_obj)
+                if needle:
+                    hay = f"{info.get('name') or ''} {info.get('display_name') or ''}".lower()
+                    if needle not in hay:
+                        continue
+                out.append(info)
+                if len(out) >= cap:
+                    break
+            return out
+
+        models_list = await asyncio.to_thread(_fetch_models)
+        return {
+            "status": "success",
+            "count": len(models_list),
+            "filter": model_filter,
+            "models": models_list,
         }
 
     if action == "pricing_table":
@@ -222,5 +277,5 @@ async def gemini_cost_and_budget(
 
 
 def register(mcp: Any) -> None:
-    """Register cost and budget tools on the MCP server instance."""
+    """Register cost, budget, and live model catalog tools on the MCP server instance."""
     mcp.tool()(gemini_cost_and_budget)

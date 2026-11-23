@@ -27,7 +27,7 @@ def _extract_interaction_text(interaction: Any) -> str:
 
 
 async def gemini_deep_research(
-    action: Literal["start", "status", "run_and_wait"] = "start",
+    action: Literal["start", "status", "run_and_wait", "cancel", "delete"] = "start",
     prompt: str = "",
     interaction_id: Optional[str] = None,
     agent: Literal[
@@ -39,13 +39,29 @@ async def gemini_deep_research(
     max_wait_sec: int = 300,
     output_markdown_path: Optional[str] = None,
 ) -> dict[str, Any]:
-    """Run or poll autonomous Gemini Deep Research & managed agents via the Interactions API.
+    """Run, poll, cancel, or delete Gemini Deep Research & managed agents via Interactions API.
 
     - `action="start"`: Launches background research (`background=True`) and returns `interaction_id`.
     - `action="status"`: Polls `interaction_id` and returns `status` + report text when completed.
     - `action="run_and_wait"`: Starts and polls until completion or `max_wait_sec` timeout.
+    - `action="cancel"`: Cancels a running background interaction.
+    - `action="delete"`: Deletes a stored interaction from the server.
     """
     client = get_client(context=f"gemini_deep_research:{action}", api_version="v1beta")
+
+    if action == "cancel":
+        if not interaction_id or not interaction_id.strip():
+            raise ValueError("interaction_id is required for action='cancel'.")
+        target_id = interaction_id.strip()
+        await asyncio.to_thread(client.interactions.cancel, target_id)
+        return {"status": "cancelled", "interaction_id": target_id}
+
+    if action == "delete":
+        if not interaction_id or not interaction_id.strip():
+            raise ValueError("interaction_id is required for action='delete'.")
+        target_id = interaction_id.strip()
+        await asyncio.to_thread(client.interactions.delete, target_id)
+        return {"status": "deleted", "interaction_id": target_id}
 
     if action == "status":
         if not interaction_id or not interaction_id.strip():

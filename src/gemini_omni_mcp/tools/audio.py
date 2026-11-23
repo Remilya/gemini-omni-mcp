@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import asyncio
 import base64
+import json
+import re
 from typing import Any, Literal, Optional
 
 from google.genai import types
@@ -16,6 +18,147 @@ from gemini_omni_mcp.media import (
     save_pcm_or_audio_bytes,
 )
 from gemini_omni_mcp.pricing import record_api_usage
+
+
+def _format_srt_timestamp(seconds: float) -> str:
+    """Format non-negative seconds as an SRT timestamp (`HH:MM:SS,mmm`)."""
+    total_ms = max(0, int(round(float(seconds) * 1000)))
+    hours, rem = divmod(total_ms, 3_600_000)
+    minutes, rem = divmod(rem, 60_000)
+    secs, millis = divmod(rem, 1000)
+    return f"{hours:02d}:{minutes:02d}:{secs:02d},{millis:03d}"
+
+
+def _parse_offset_seconds(val: Any) -> Optional[float]:
+    if val is None:
+        return None
+    if isinstance(val, (int, float)):
+        return float(val)
+    if isinstance(val, str):
+        s = val.strip().lower()
+        if s.endswith("s"):
+            s = s[:-1]
+        try:
+            return float(s)
+        except ValueError:
+            return None
+    secs = getattr(val, "seconds", None)
+    nanos = getattr(val, "nanos", None)
+    if secs is not None or nanos is not None:
+        return float(secs or 0) + float(nanos or 0) / 1_000_000_000.0
+    return None
+
+
+def _extract_word_timings(interaction: Any) -> list[dict[str, Any]]:
+    timings: list[dict[str, Any]] = []
+    for out_item in getattr(interaction, "outputs", None) or []:
+        for ann in getattr(out_item, "annotations", None) or []:
+            word = getattr(ann, "word", None) or getattr(ann, "text", None)
+            start = _parse_offset_seconds(
+                getattr(ann, "start_offset", None)
+                or getattr(ann, "start_time", None)
+                or getattr(ann, "start", None)
+            )
+            end = _parse_offset_seconds(
+                getattr(ann, "end_offset", None)
+                or getattr(ann, "end_time", None)
+                or getattr(ann, "end", None)
+            )
+            if word and start is not None and end is not None:
+                timings.append({"word": str(word).strip(), "start": start, "end": end})
+    return timings
+
+
+def _wrap_caption_chunks(text: str, max_chars: int = 42) -> list[str]:
+    words = text.split()
+    if not words:
+        return []
+    chunks: list[str] = []
+    cur: list[str] = []
+    for w in words:
+        candidate = " ".join(cur + [w])
+        if cur and len(candidate) > max_chars:
+            chunks.append(" ".join(cur))
+            cur = [w]
+        else:
+            cur.append(w)
+    if cur:
+        chunks.append(" ".join(cur))
+    return chunks
+
+
+def _build_srt(
+    transcript: str,
+    word_timings: Optional[list[dict[str, Any]]] = None,
+) -> str:
+    """Build valid SubRip (`.srt`) captions from word timings or estimated sentence pacing."""
+    cues: list[tuple[float, float, str]] = []
+
+    if word_timings:
+        cur_words: list[str] = []
+        cue_start: Optional[float] = None
+        cue_end: float = 0.0
+        for wt in word_timings:
+            w = str(wt.get("word", "")).strip()
+            if not w:
+                continue
+            w_start = float(wt.get("start", cue_end))
+            w_end = max(w_start + 0.1, float(wt.get("end", w_start + 0.35)))
+            candidate = " ".join(cur_words + [w])
+            if cur_words and (len(candidate) > 42 or (w_end - (cue_start or 0.0)) > 4.0):
+                cues.append((cue_start or 0.0, cue_end, " ".join(cur_words)))
+                cur_words = [w]
+                cue_start = w_start
+                cue_end = w_end
+            else:
+                if cue_start is None:
+                    cue_start = w_start
+                cur_words.append(w)
+                cue_end = w_end
+        if cur_words:
+            cues.append((cue_start or 0.0, cue_end, " ".join(cur_words)))
+    else:
+        clean = transcript.strip()
+        if not clean:
+            return ""
+        sentences = [s.strip() for s in re.split(r"\n+|(?<=[.!?])\s+", clean) if s.strip()]
+        cursor = 0.0
+        for sent in sentences:
+            for chunk in _wrap_caption_chunks(sent, max_chars=42):
+                dur = max(1.2, round(len(chunk.split()) / 2.8, 3))
+                cues.append((cursor, round(cursor + dur, 3), chunk))
+                cursor = round(cursor + dur, 3)
+
+    blocks = [
+        f"{idx}\n{_format_srt_timestamp(start)} --> {_format_srt_timestamp(end)}\n{text}"
+        for idx, (start, end, text) in enumerate(cues, start=1)
+    ]
+    return "\n\n".join(blocks) + ("\n" if blocks else "")
+
+
+def _format_transcript_output(
+    transcript: str,
+    output_format: str,
+    input_label: str,
+    word_timings: Optional[list[dict[str, Any]]] = None,
+) -> str:
+    fmt = output_format.strip().lower()
+    if fmt == "md":
+        return f"# Transcript: {input_label}\n\n{transcript}\n"
+    if fmt == "json":
+        return json.dumps(
+            {
+                "model": "gemini-3.5-transcribe",
+                "input": input_label,
+                "transcript": transcript,
+                "word_timings": word_timings or [],
+            },
+            indent=2,
+            ensure_ascii=False,
+        )
+    if fmt == "srt":
+        return _build_srt(transcript, word_timings)
+    return transcript
 
 
 async def gemini_audio_studio(
@@ -44,13 +187,15 @@ async def gemini_audio_studio(
     enable_word_timestamps: bool = False,
     custom_vocabulary: Optional[list[str]] = None,
     language_codes: Optional[list[str]] = None,
+    output_format: Literal["text", "md", "json", "srt"] = "text",
+    output_transcript_path: Optional[str] = None,
 ) -> dict[str, Any]:
-    """Voice synthesis, speech-to-text transcription, custom Voices API, & Lyria 3.5 music.
+    """Voice synthesis, audio/video transcription (Text/MD/JSON/SRT), Voices API, & Lyria 3.5 music.
 
     - `mode="tts"`: Uses `gemini-3.8-flash-tts` Interactions API `speech_metadata` annotations
       so stage directions are never spoken aloud; supports single/multi-speaker dialogue.
-    - `mode="transcribe"`: Uses `gemini-3.5-transcribe` (`verbatim` with optional diarization/word
-      timestamps, or `smart` disfluency removal + formatting, or `custom_vocabulary` biasing).
+    - `mode="transcribe"`: Uses `gemini-3.5-transcribe` on local audio/video files or `files/<id>` URIs;
+      outputs `text`, `md`, `json`, or `.srt` captions and optionally writes `output_transcript_path`.
     - `mode="voice_design"` / `"voice_remix"` / `"voice_replicate"` / `"voice_list"` / `"voice_get"` / `"voice_delete"`:
       Manages custom vocal personas via `client.voices`.
     - `mode="music"`: Composes audio via `lyria-3.5` / `lyria-3-pro-preview` / `lyria-3-clip-preview`.
@@ -66,18 +211,31 @@ async def gemini_audio_studio(
             raise ValueError(
                 "enable_diarization and enable_word_timestamps require transcription_mode='verbatim'."
             )
-        in_path = resolve_path(input_audio_path)
-        if not in_path.is_file():
-            raise FileNotFoundError(f"Audio file not found: {in_path}")
+
+        raw_in = input_audio_path.strip()
+        is_files_uri = raw_in.startswith("files/")
+        in_path = None if is_files_uri else resolve_path(raw_in)
+        if in_path is not None and not in_path.is_file():
+            raise FileNotFoundError(f"Audio/video file not found: {in_path}")
 
         client = get_client(context="gemini_audio_studio:transcribe", api_version="v1beta")
-        uploaded = await asyncio.to_thread(client.files.upload, file=str(in_path))
-        while (
-            getattr(uploaded, "state", None)
-            and getattr(uploaded.state, "name", str(uploaded.state)) == "PROCESSING"
-        ):
-            await asyncio.sleep(1.5)
-            uploaded = await asyncio.to_thread(client.files.get, name=uploaded.name)
+        if is_files_uri:
+            uploaded = await asyncio.to_thread(client.files.get, name=raw_in)
+            input_label = raw_in
+            source_ref = raw_in
+            size_bytes = int(getattr(uploaded, "size_bytes", None) or 100_000)
+        else:
+            assert in_path is not None
+            uploaded = await asyncio.to_thread(client.files.upload, file=str(in_path))
+            while (
+                getattr(uploaded, "state", None)
+                and getattr(uploaded.state, "name", str(uploaded.state)) == "PROCESSING"
+            ):
+                await asyncio.sleep(1.5)
+                uploaded = await asyncio.to_thread(client.files.get, name=uploaded.name)
+            input_label = in_path.name
+            source_ref = str(in_path)
+            size_bytes = in_path.stat().st_size
 
         mode_cfg: dict[str, Any] = {"type": transcription_mode}
         if enable_diarization:
@@ -108,11 +266,26 @@ async def gemini_audio_studio(
                     transcript = t.strip()
                     break
 
+        word_timings = _extract_word_timings(interaction)
+        formatted = _format_transcript_output(
+            transcript=transcript,
+            output_format=output_format,
+            input_label=input_label,
+            word_timings=word_timings,
+        )
+
+        saved_transcript_path: Optional[str] = None
+        if output_transcript_path:
+            out_t = resolve_path(output_transcript_path)
+            out_t.parent.mkdir(parents=True, exist_ok=True)
+            out_t.write_text(formatted, encoding="utf-8")
+            saved_transcript_path = str(out_t)
+
         usage = getattr(interaction, "usage", None) or getattr(interaction, "usage_metadata", None)
         in_tok = int(getattr(usage, "total_input_tokens", None) or getattr(usage, "input_tokens", None) or 0) if usage else 0
         out_tok = int(getattr(usage, "total_output_tokens", None) or getattr(usage, "output_tokens", None) or 0) if usage else 0
         if in_tok == 0:
-            in_tok = max(100, in_path.stat().st_size // 1000)
+            in_tok = max(100, size_bytes // 1000)
         if out_tok == 0:
             out_tok = max(20, len(transcript) // 4)
 
@@ -122,15 +295,18 @@ async def gemini_audio_studio(
             tier="standard",
             input_tokens=in_tok,
             output_tokens=out_tok,
-            note=f"transcribe ({transcription_mode}) <- {in_path.name}",
+            note=f"transcribe ({transcription_mode}, {output_format}) <- {input_label}",
         )
         return {
             "status": "success",
             "mode": "transcribe",
             "model": "gemini-3.5-transcribe",
             "transcription_mode": transcription_mode,
-            "input_audio_path": str(in_path),
+            "output_format": output_format,
+            "input_audio_path": source_ref,
+            "output_transcript_path": saved_transcript_path,
             "transcript": transcript,
+            "formatted_output": formatted if output_format != "text" else None,
             "cost_usd": cost_entry["cost_usd"],
         }
 
