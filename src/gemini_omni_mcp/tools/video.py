@@ -12,7 +12,7 @@ from gemini_omni_mcp.media import guess_mime
 from gemini_omni_mcp.pricing import record_api_usage
 
 
-async def gemini_video_studio(
+async def gemini_video(
     action: Literal["generate", "extend", "edit", "seamless_loop"] = "generate",
     prompt: str = "",
     output_mp4_path: str = "output/gemini_video.mp4",
@@ -39,7 +39,7 @@ async def gemini_video_studio(
     if not prompt.strip():
         raise ValueError("prompt cannot be empty.")
 
-    client = get_client(context=f"gemini_video_studio:{action}")
+    client = get_client(context=f"gemini_video:{action}", api_version="v1beta")
 
     dur_str = duration.strip().lower()
     if not dur_str.endswith("s"):
@@ -191,7 +191,7 @@ async def gemini_video_studio(
     )
     est_in_tokens = num_img_inputs * 560 + max(50, len(prompt) // 4)
     cost_entry = record_api_usage(
-        tool_name="gemini_video_studio",
+        tool_name="gemini_video",
         model=model,
         tier="standard",
         input_tokens=est_in_tokens,
@@ -220,4 +220,4 @@ async def gemini_video_studio(
 
 def register(mcp: Any) -> None:
     """Register video tools on the MCP server instance."""
-    mcp.tool()(gemini_video_studio)
+    mcp.tool()(gemini_video)

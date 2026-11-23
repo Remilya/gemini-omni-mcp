@@ -1,13 +1,13 @@
 {
   "name": "gemini-omni",
   "displayName": "Gemini Omni MCP",
-  "version": "2.1.0",
-  "description": "All-in-one Google GenAI v2.1 MCP server (18 tools): Live Docs Puller, Gemini 4 (Neon/Hydrogen, opt-in Carbon) & Gemma 4, Decisions API, YouTube/PDF/media analysis, 48h Files API, SRT/MD/JSON transcription, Deep Research, Nano Banana 2.1, Omni Video, TTS/Lyria 3.5 & USD budget guard.",
+  "version": "3.0.0",
+  "description": "Lean, hardened Google GenAI v3.0 MCP server (6 default core tools + opt-in swarm/research/3d toolsets): Nano Banana 2.1, Omni Video, Audio/Transcribe/Voices/Lyria 3.5, Gemini 4 & Gemma 4 Analysis, Live Docs Puller & Real-Time USD Budget Guard.",
   "logo": "assets/logo.svg",
   "suggestedPrompts": [
-    "Search live Gemini API docs for the Interactions API and Decisions API, then scaffold a working Python workflow",
-    "Analyze a PDF or YouTube video with gemini_analyze and generate SRT captions with gemini_audio_studio",
-    "Use gemini_decide to route incoming customer tickets with noul, choice, and score questions and check session USD spend"
+    "Search live Gemini API docs with gemini_docs and verify the latest Gemini 4 and Interactions API parameters",
+    "Analyze this codebase or YouTube video with gemini_analyze and generate SRT captions with gemini_audio",
+    "Generate a character sheet with gemini_image (Nano Banana 2.1) and check session USD spend with gemini_budget"
   ],
   "author": {
     "name": "Remilya",

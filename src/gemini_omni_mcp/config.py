@@ -7,9 +7,12 @@ import os
 import sys
 import threading
 from pathlib import Path
+from typing import Iterable, Optional, Union
 
 # Single lock protecting ledger and local state updates across threads.
 LEDGER_LOCK = threading.Lock()
+
+ALL_TOOLSETS: tuple[str, ...] = ("core", "swarm", "research", "3d")
 
 
 def get_logger() -> logging.Logger:
@@ -54,10 +57,54 @@ def get_cache_dir() -> Path:
     return get_workspace_root() / ".gemini-omni" / "cache"
 
 
+def is_outside_workspace_allowed() -> bool:
+    """Return True only when the user explicitly opts into reading/writing outside workspace."""
+    raw = os.environ.get("GEMINI_OMNI_ALLOW_OUTSIDE_WORKSPACE", "false").strip().lower()
+    return raw in ("1", "true", "yes", "on")
+
+
+def is_custom_render_cmd_allowed() -> bool:
+    """Return True only when custom shell render_command execution is explicitly enabled."""
+    raw = os.environ.get("GEMINI_OMNI_ALLOW_CUSTOM_RENDER_CMD", "false").strip().lower()
+    return raw in ("1", "true", "yes", "on")
+
+
+def get_enabled_toolsets(
+    explicit: Optional[Union[str, Iterable[str]]] = None,
+) -> set[str]:
+    """Parse enabled toolsets from explicit argument, GEMINI_OMNI_TOOLSETS, or legacy flags."""
+    if explicit is not None:
+        if isinstance(explicit, str):
+            tokens = [t.strip().lower() for t in explicit.split(",") if t.strip()]
+        else:
+            tokens = [str(t).strip().lower() for t in explicit if str(t).strip()]
+    else:
+        raw_env = (os.environ.get("GEMINI_OMNI_TOOLSETS") or "").strip()
+        tokens = [t.strip().lower() for t in raw_env.split(",") if t.strip()]
+
+    if not tokens:
+        enabled = {"core"}
+        legacy_3d = os.environ.get("GEMINI_OMNI_ENABLE_3D_TOOLS", "false").strip().lower()
+        if legacy_3d in ("1", "true", "yes", "on"):
+            enabled.add("3d")
+        return enabled
+
+    valid = set(ALL_TOOLSETS) | {"all"}
+    unknown = [t for t in tokens if t not in valid]
+    if unknown:
+        raise ValueError(
+            f"Unknown toolset(s): {', '.join(unknown)}. "
+            f"Valid options: {', '.join(ALL_TOOLSETS)}, all."
+        )
+
+    if "all" in tokens:
+        return set(ALL_TOOLSETS)
+    return set(tokens)
+
+
 def is_3d_tools_enabled() -> bool:
-    """Return True unless optional 3D/CAD tools are explicitly disabled via env var."""
-    raw = os.environ.get("GEMINI_OMNI_ENABLE_3D_TOOLS", "true").strip().lower()
-    return raw not in ("0", "false", "no", "off")
+    """Return True when the optional `3d` toolset is enabled."""
+    return "3d" in get_enabled_toolsets()
 
 
 def load_dotenv_if_present(override: bool = False) -> None:
@@ -83,9 +130,26 @@ def load_dotenv_if_present(override: bool = False) -> None:
         logger.warning("Failed to parse .env file at %s: %s", env_file, exc)
 
 
-def resolve_path(p: str) -> Path:
-    """Resolve a path relative to the active workspace root."""
+def resolve_path(
+    p: str,
+    *,
+    allow_outside_workspace: Optional[bool] = None,
+) -> Path:
+    """Resolve a path relative to the active workspace root, blocking traversal by default."""
+    workspace = get_workspace_root()
     path_obj = Path(p).expanduser()
     if not path_obj.is_absolute():
-        path_obj = get_workspace_root() / path_obj
-    return path_obj.resolve()
+        path_obj = workspace / path_obj
+    resolved = path_obj.resolve()
+
+    outside_ok = (
+        is_outside_workspace_allowed()
+        if allow_outside_workspace is None
+        else allow_outside_workspace
+    )
+    if not outside_ok and not resolved.is_relative_to(workspace):
+        raise PermissionError(
+            f"Access blocked: '{resolved}' is outside workspace '{workspace}'. "
+            "Set GEMINI_OMNI_ALLOW_OUTSIDE_WORKSPACE=true or pass --allow-outside-workspace to allow external paths."
+        )
+    return resolved

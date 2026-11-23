@@ -161,7 +161,7 @@ def _format_transcript_output(
     return transcript
 
 
-async def gemini_audio_studio(
+async def gemini_audio(
     mode: Literal[
         "tts",
         "transcribe",
@@ -218,7 +218,7 @@ async def gemini_audio_studio(
         if in_path is not None and not in_path.is_file():
             raise FileNotFoundError(f"Audio/video file not found: {in_path}")
 
-        client = get_client(context="gemini_audio_studio:transcribe", api_version="v1beta")
+        client = get_client(context="gemini_audio:transcribe", api_version="v1beta")
         if is_files_uri:
             uploaded = await asyncio.to_thread(client.files.get, name=raw_in)
             input_label = raw_in
@@ -290,7 +290,7 @@ async def gemini_audio_studio(
             out_tok = max(20, len(transcript) // 4)
 
         cost_entry = record_api_usage(
-            tool_name="gemini_audio_studio",
+            tool_name="gemini_audio",
             model="gemini-3.5-transcribe",
             tier="standard",
             input_tokens=in_tok,
@@ -310,7 +310,7 @@ async def gemini_audio_studio(
             "cost_usd": cost_entry["cost_usd"],
         }
 
-    client = get_client(context=f"gemini_audio_studio:{mode}")
+    client = get_client(context=f"gemini_audio:{mode}", api_version="v1beta")
     out_file = (
         resolve_path(output_audio_path)
         if output_audio_path
@@ -497,7 +497,7 @@ async def gemini_audio_studio(
                 )
                 dur_est = max(1.0, out_file.stat().st_size / 48000.0)
                 cost_entry = record_api_usage(
-                    tool_name="gemini_audio_studio",
+                    tool_name="gemini_audio",
                     model=model_id,
                     tier="standard",
                     input_tokens=max(20, len(prompt_or_text) // 4),
@@ -537,7 +537,7 @@ async def gemini_audio_studio(
             [types.Part.from_text(text=tts_text)],
             config,
             False,
-            "gemini_audio_studio",
+            "gemini_audio",
         )
         audio_bytes, mime = extract_audio_bytes(resp)
         if not audio_bytes:
@@ -588,7 +588,7 @@ async def gemini_audio_studio(
                     save_pcm_or_audio_bytes, audio_bytes, mime, out_file
                 )
                 cost_entry = record_api_usage(
-                    tool_name="gemini_audio_studio",
+                    tool_name="gemini_audio",
                     model=candidate_model,
                     tier="standard",
                     songs_generated=1,
@@ -616,7 +616,7 @@ async def gemini_audio_studio(
                 [types.Part.from_text(text=prompt_or_text)],
                 config,
                 False,
-                "gemini_audio_studio",
+                "gemini_audio",
             )
             audio_bytes, mime = extract_audio_bytes(resp)
             if audio_bytes:
@@ -640,4 +640,4 @@ async def gemini_audio_studio(
 
 def register(mcp: Any) -> None:
     """Register audio, TTS, Voices, STT transcription, and Lyria tools on the MCP server."""
-    mcp.tool()(gemini_audio_studio)
+    mcp.tool()(gemini_audio)

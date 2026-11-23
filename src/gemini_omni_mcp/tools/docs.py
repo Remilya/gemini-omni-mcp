@@ -68,7 +68,6 @@ def _normalize_doc_url(slug_or_url: str) -> str:
     if slug == "llms.txt":
         return LLMS_TXT_URL
 
-    # Separate optional query string if user passed e.g. "latest-model?generate-content=true"
     query = ""
     if "?" in slug:
         slug, query = slug.split("?", 1)
@@ -152,8 +151,9 @@ async def _call_remote_docs_mcp(tool_name: str, arguments: dict[str, Any]) -> di
     return result
 
 
-async def gemini_search_docs(
-    query: str,
+async def gemini_docs(
+    action: Literal["search", "fetch"] = "search",
+    query: Optional[str] = None,
     limit: int = 10,
     scope: Optional[
         Literal["api-reference", "deprecated", "guide", "migration", "sdk", "type-reference"]
@@ -173,87 +173,81 @@ async def gemini_search_docs(
     language: Optional[Literal["dotnet", "go", "java", "javascript", "python"]] = None,
     api: Optional[Literal["interactions", "generate-content"]] = None,
     cursor: Optional[str] = None,
-) -> dict[str, Any]:
-    """Search live official Google Gemini API & SDK docs (`gemini-api-docs-mcp.dev`).
-
-    Zero API-key cost ($0.00). Automatically falls back to `https://aistudio.google.com/llms.txt`
-    keyword search if the remote Docs MCP server is unreachable.
-    """
-    clean_query = query.strip()
-    if not clean_query:
-        raise ValueError("query cannot be empty.")
-
-    safe_limit = max(1, min(int(limit), 50))
-    args: dict[str, Any] = {"query": clean_query, "limit": safe_limit}
-    if scope:
-        args["scope"] = scope
-    if source:
-        args["source"] = source
-    if language:
-        args["language"] = language
-    if api:
-        args["api"] = api
-    if cursor:
-        args["cursor"] = cursor
-
-    try:
-        result = await _call_remote_docs_mcp("gemini_search_docs", args)
-        content_blocks = result.get("content") or []
-        raw_text = ""
-        for blk in content_blocks:
-            if isinstance(blk, dict) and blk.get("text"):
-                raw_text = blk["text"]
-                break
-        if raw_text:
-            try:
-                inner = json.loads(raw_text)
-                if isinstance(inner, dict):
-                    return {
-                        "status": "ok",
-                        "source": DOCS_MCP_URL,
-                        "query": clean_query,
-                        "hits": inner.get("hits", []),
-                        "next_cursor": inner.get("next_cursor"),
-                    }
-            except json.JSONDecodeError:
-                return {
-                    "status": "ok",
-                    "source": DOCS_MCP_URL,
-                    "query": clean_query,
-                    "raw_text": raw_text,
-                }
-        return {"status": "ok", "source": DOCS_MCP_URL, "query": clean_query, "result": result}
-    except Exception as exc:
-        async with httpx.AsyncClient(timeout=20.0, follow_redirects=True) as http:
-            llms_resp = await http.get(LLMS_TXT_URL)
-            llms_resp.raise_for_status()
-            hits = _search_llms_txt_fallback(llms_resp.text, clean_query, safe_limit)
-        return {
-            "status": "fallback_llms_txt",
-            "source_url": LLMS_TXT_URL,
-            "fallback_reason": str(exc)[:240],
-            "query": clean_query,
-            "hits": hits,
-        }
-
-
-async def gemini_fetch_doc(
     chunk_id: Optional[str] = None,
     slug_or_url: Optional[str] = None,
     context: int = 0,
     max_chars: int = 24000,
 ) -> dict[str, Any]:
-    """Fetch a live Gemini doc chunk by `chunk_id` OR full Markdown page by `slug_or_url`.
+    """Search or fetch live official Google Gemini API & SDK documentation ($0.00 cost).
 
-    Provide exactly one of:
-      - `chunk_id`: Chunk identifier returned by `gemini_search_docs`.
-      - `slug_or_url`: Doc slug (e.g. `"latest-model"`, `"decisions-api"`, `"pricing"`, `"llms.txt"`)
-        or full HTTPS URL on `aistudio.google.com`, `ai.google.dev`, or `raw.githubusercontent.com`.
+    - `action="search"`: Search live docs at `gemini-api-docs-mcp.dev` using `query` (automatically
+      falls back to `https://aistudio.google.com/llms.txt` keyword search if unreachable).
+    - `action="fetch"`: Fetch a specific chunk by `chunk_id` OR full Markdown page by `slug_or_url`
+      (e.g. `"latest-model"`, `"pricing"`, `"llms.txt"`, or an HTTPS URL on allowlisted hosts).
     """
+    if action == "search":
+        if not query or not query.strip():
+            raise ValueError("query is required for action='search'.")
+        clean_query = query.strip()
+
+        safe_limit = max(1, min(int(limit), 50))
+        args: dict[str, Any] = {"query": clean_query, "limit": safe_limit}
+        if scope:
+            args["scope"] = scope
+        if source:
+            args["source"] = source
+        if language:
+            args["language"] = language
+        if api:
+            args["api"] = api
+        if cursor:
+            args["cursor"] = cursor
+
+        try:
+            result = await _call_remote_docs_mcp("gemini_search_docs", args)
+            content_blocks = result.get("content") or []
+            raw_text = ""
+            for blk in content_blocks:
+                if isinstance(blk, dict) and blk.get("text"):
+                    raw_text = blk["text"]
+                    break
+            if raw_text:
+                try:
+                    inner = json.loads(raw_text)
+                    if isinstance(inner, dict):
+                        return {
+                            "status": "ok",
+                            "source": DOCS_MCP_URL,
+                            "query": clean_query,
+                            "hits": inner.get("hits", []),
+                            "next_cursor": inner.get("next_cursor"),
+                        }
+                except json.JSONDecodeError:
+                    return {
+                        "status": "ok",
+                        "source": DOCS_MCP_URL,
+                        "query": clean_query,
+                        "raw_text": raw_text,
+                    }
+            return {"status": "ok", "source": DOCS_MCP_URL, "query": clean_query, "result": result}
+        except Exception as exc:
+            async with httpx.AsyncClient(timeout=20.0, follow_redirects=True) as http:
+                llms_resp = await http.get(LLMS_TXT_URL)
+                llms_resp.raise_for_status()
+                hits = _search_llms_txt_fallback(llms_resp.text, clean_query, safe_limit)
+            return {
+                "status": "fallback_llms_txt",
+                "source_url": LLMS_TXT_URL,
+                "fallback_reason": str(exc)[:240],
+                "query": clean_query,
+                "hits": hits,
+            }
+
+    # action == "fetch"
     has_chunk = bool(chunk_id and chunk_id.strip())
     has_slug = bool(slug_or_url and slug_or_url.strip())
     if has_chunk == has_slug:
-        raise ValueError("Provide exactly one of `chunk_id` or `slug_or_url`.")
+        raise ValueError("Provide exactly one of `chunk_id` or `slug_or_url` for action='fetch'.")
 
     limit_chars = max(500, int(max_chars))
 
@@ -282,6 +276,16 @@ async def gemini_fetch_doc(
     async with httpx.AsyncClient(timeout=20.0, follow_redirects=True) as http:
         resp = await http.get(target_url)
         resp.raise_for_status()
+        final_url = str(getattr(resp, "url", "") or target_url)
+        if final_url and "://" in final_url:
+            parsed_final = urlparse(final_url)
+            if (
+                parsed_final.scheme != "https"
+                or parsed_final.netloc.lower() not in ALLOWED_DOC_HOSTS
+            ):
+                raise ValueError(
+                    f"Redirected to disallowed doc host: {final_url!r}."
+                )
         full_text = resp.text
 
     return {
@@ -294,6 +298,5 @@ async def gemini_fetch_doc(
 
 
 def register(mcp: Any) -> None:
-    """Register live Gemini documentation puller tools on the MCP server instance."""
-    mcp.tool()(gemini_search_docs)
-    mcp.tool()(gemini_fetch_doc)
+    """Register unified live Gemini documentation tool on the MCP server instance."""
+    mcp.tool()(gemini_docs)

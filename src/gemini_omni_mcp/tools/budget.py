@@ -67,7 +67,7 @@ def _serialize_model_info(m: Any) -> dict[str, Any]:
     }
 
 
-async def gemini_cost_and_budget(
+async def gemini_budget(
     action: Literal[
         "summary",
         "pricing_table",
@@ -136,7 +136,7 @@ async def gemini_cost_and_budget(
         }
 
     if action == "live_models":
-        client = get_client(context="gemini_cost_and_budget:live_models")
+        client = get_client(context="gemini_budget:live_models")
         if model_id and model_id.strip():
             m_obj = await asyncio.to_thread(client.models.get, model=model_id.strip())
             return {"status": "success", "model": _serialize_model_info(m_obj)}
@@ -278,4 +278,4 @@ async def gemini_cost_and_budget(
 
 def register(mcp: Any) -> None:
     """Register cost, budget, and live model catalog tools on the MCP server instance."""
-    mcp.tool()(gemini_cost_and_budget)
+    mcp.tool()(gemini_budget)

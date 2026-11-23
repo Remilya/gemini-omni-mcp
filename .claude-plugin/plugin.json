@@ -1,7 +1,7 @@
 {
   "name": "gemini-omni",
-  "version": "2.1.0",
-  "description": "All-in-one Google GenAI MCP server & agent skills: Live Docs Puller, Gemini 4 (Neon/Hydrogen, opt-in Carbon), Gemma 4, Decisions API, YouTube/PDF analyze, Files API, SRT transcribe, Omni Video, Nano Banana 2.1, Deep Research, and real-time USD budget guard.",
+  "version": "3.0.0",
+  "description": "Lean, hardened Google GenAI MCP server & agent skills (6 core tools by default, modular opt-in swarm/research/3d): Gemini 4 (Neon/Hydrogen, opt-in Carbon), Gemma 4, Live Docs Puller, Nano Banana 2.1, Omni Video, Transcribe/TTS/Lyria 3.5, and USD budget guard.",
   "author": {
     "name": "Remilya"
   },
@@ -14,7 +14,7 @@
     "gemini-api",
     "google-genai",
     "mcp",
-    "decisions-api",
+    "nano-banana",
     "multimodal",
     "skills"
   ]

@@ -4,8 +4,8 @@ build-backend = "hatchling.build"
 
 [project]
 name = "gemini-omni-mcp"
-version = "2.1.0"
-description = "All-in-one Google GenAI Multimodal & Agentic MCP Server — Gemini 4 (Neon, Hydrogen, opt-in Carbon), Decisions API, Live Docs Puller, Nano Banana 2.1, Gemini Omni Video, Transcribe, Multimodal Embeddings, Deep Research, TTS/Voices, Lyria 3.5 & Real-Time USD Budget Guard."
+version = "3.0.0"
+description = "Lean, hardened Google GenAI Multimodal & Agentic MCP Server — Gemini 4 (Neon, Hydrogen, opt-in Carbon), Gemma 4, Nano Banana 2.1, Gemini Omni Video, Transcribe, TTS/Voices, Lyria 3.5, Live Docs Puller & Real-Time USD Budget Guard."
 readme = "README.md"
 license = { text = "MIT" }
 requires-python = ">=3.11"

@@ -185,3 +185,57 @@ def generate_content_with_retry(
     except Exception:
         pass
     return response
+
+
+_VALID_THINKING_LEVELS = frozenset({"minimal", "low", "medium", "high", "xhigh"})
+
+
+def normalize_thinking_level(
+    model: str,
+    level: Optional[str],
+) -> Optional[str]:
+    """Clamp requested `thinking_level` to what `model` actually supports.
+
+    Rules for Google GenAI >= 3.2.0 / 3.6.1:
+    - Gemma models (`gemma-*`) do not use Gemini `ThinkingConfig` -> returns `None`.
+    - Gemini 4 models reject `minimal` -> clamped to `low`.
+    - `xhigh` is supported on `gemini-4-neon` and `gemini-4-hydrogen`; on
+      Carbon, Argon, 3.x, or other models it is clamped to `high`.
+    - Returns lowercase level (`minimal`, `low`, `medium`, `high`, `xhigh`) or `None`.
+    """
+    if level is None:
+        return None
+    norm = str(level).strip().lower()
+    if not norm or norm in ("none", "off", "unspecified"):
+        return None
+    if norm not in _VALID_THINKING_LEVELS:
+        raise ValueError(
+            f"Unsupported thinking_level '{level}'. "
+            "Choose from: minimal, low, medium, high, xhigh."
+        )
+
+    m = (model or "").strip().lower()
+    if "gemma" in m:
+        return None
+
+    is_gemini_4 = any(tok in m for tok in ("gemini-4", "neon", "hydrogen", "carbon", "argon"))
+    if norm == "minimal" and is_gemini_4:
+        return "low"
+
+    if norm == "xhigh":
+        if "neon" in m or "hydrogen" in m:
+            return "xhigh"
+        return "high"
+
+    return norm
+
+
+def build_thinking_config(
+    model: str,
+    level: Optional[str],
+) -> Optional[types.ThinkingConfig]:
+    """Construct `types.ThinkingConfig` for supported models or `None` when omitted."""
+    norm = normalize_thinking_level(model, level)
+    if norm is None:
+        return None
+    return types.ThinkingConfig(thinking_level=norm.upper())

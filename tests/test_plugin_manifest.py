@@ -29,7 +29,7 @@ def test_antigravity_plugin_json_strict_schema():
     unknown_keys = set(data.keys()) - ALLOWED_PLUGIN_TOP_LEVEL_KEYS
     assert not unknown_keys, f"Unsupported top-level keys in plugin.json: {unknown_keys}"
     assert data["name"] == "gemini-omni"
-    assert data["version"] == "2.1.0"
+    assert data["version"] == "3.0.0"
     assert isinstance(data["description"], str) and len(data["description"]) > 10
     assert isinstance(data["suggestedPrompts"], list)
     assert 1 <= len(data["suggestedPrompts"]) <= 3
@@ -48,7 +48,7 @@ def test_cross_ide_plugin_manifests():
         assert p.is_file(), f"Missing manifest: {p}"
         data = json.loads(p.read_text(encoding="utf-8"))
         assert data["name"] == "gemini-omni"
-        assert data["version"] == "2.1.0"
+        assert data["version"] == "3.0.0"
         assert data["license"] == "MIT"
         assert data["repository"] == "https://github.com/Remilya/gemini-omni-mcp"
         if expects_skills:

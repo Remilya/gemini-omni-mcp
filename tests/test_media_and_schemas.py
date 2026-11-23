@@ -2,47 +2,22 @@
 
 from __future__ import annotations
 
-import io
 import wave
 from types import SimpleNamespace
 
 import pytest
-from PIL import Image
 from pydantic import ValidationError
 
 from gemini_omni_mcp.media import (
-    build_numbered_contact_grid,
     extract_json_text,
     save_pcm_or_audio_bytes,
 )
 from gemini_omni_mcp.schemas import (
     ArgonJudgeEvaluation,
     Asset3DSpecResponse,
-    CuratedRefsResponse,
     MaterialHexLayer,
     RLAIF3DCriticResponse,
 )
-
-
-def test_build_numbered_contact_grid_and_corrupt_fallback(tmp_path):
-    img1 = tmp_path / "front.png"
-    img2 = tmp_path / "side.png"
-    Image.new("RGB", (64, 64), (200, 50, 50)).save(img1, format="PNG")
-    Image.new("RGB", (120, 80), (50, 180, 90)).save(img2, format="PNG")
-    missing = tmp_path / "missing.png"
-
-    grid_bytes, meta = build_numbered_contact_grid(
-        [str(img1), str(img2), str(missing)], cols=2
-    )
-    assert grid_bytes[:2] == b"\xff\xd8"  # Valid JPEG header
-    with Image.open(io.BytesIO(grid_bytes)) as grid_im:
-        assert grid_im.size[0] == 840
-        assert grid_im.size[1] > 0
-
-    assert len(meta) == 3
-    assert meta[0]["width"] == 64 and meta[0]["height"] == 64
-    assert meta[1]["width"] == 120 and meta[1]["height"] == 80
-    assert "error" in meta[2]
 
 
 def test_save_pcm_or_audio_bytes_wraps_raw_pcm(tmp_path):
@@ -76,23 +51,6 @@ def test_schemas_validation_and_hex_normalization():
 
     with pytest.raises(ValidationError):
         MaterialHexLayer(part_name="bad", hex_color="not-a-hex")
-
-    curated = CuratedRefsResponse.model_validate(
-        {
-            "selected_refs": [
-                {
-                    "index": 0,
-                    "file_path": "front.png",
-                    "view_category": "front",
-                    "score": 9.5,
-                    "what_it_is_good_for": "Crisp front silhouette",
-                }
-            ],
-            "rejected_indices": [1],
-            "curation_summary": "Selected sharp front view.",
-        }
-    )
-    assert curated.selected_refs[0].view_category == "front"
 
     spec = Asset3DSpecResponse.model_validate(
         {

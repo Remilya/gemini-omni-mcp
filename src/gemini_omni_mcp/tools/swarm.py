@@ -10,7 +10,11 @@ from typing import Any, Literal, Optional
 
 from google.genai import types
 
-from gemini_omni_mcp.client import get_client, is_retryable_exception
+from gemini_omni_mcp.client import (
+    build_thinking_config,
+    get_client,
+    is_retryable_exception,
+)
 from gemini_omni_mcp.config import (
     get_cache_dir,
     get_workspace_root,
@@ -212,11 +216,10 @@ async def gemini_async_swarm(
                     parts.append(part)
                 parts.append(types.Part.from_text(text=prompt_text))
 
-                cfg_kwargs: dict[str, Any] = {
-                    "thinking_config": types.ThinkingConfig(
-                        thinking_level=thinking_level.upper()
-                    ),
-                }
+                cfg_kwargs: dict[str, Any] = {}
+                thinking_cfg = build_thinking_config(model, thinking_level)
+                if thinking_cfg is not None:
+                    cfg_kwargs["thinking_config"] = thinking_cfg
                 if cached_content_name and str(cached_content_name).startswith("cachedContents/"):
                     cfg_kwargs["cached_content"] = cached_content_name
                 elif cached_content_name and str(cached_content_name).startswith("implicit:"):

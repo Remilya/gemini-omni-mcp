@@ -1,10 +1,9 @@
-"""Image, audio, contact-grid, response extraction, and Blender lookup helpers."""
+"""Image, audio, response extraction, and Blender lookup helpers."""
 
 from __future__ import annotations
 
 import base64
 import io
-import math
 import mimetypes
 import os
 import re
@@ -14,7 +13,7 @@ from pathlib import Path
 from typing import Any, Optional
 
 from google.genai import types
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image
 
 from gemini_omni_mcp.config import resolve_path
 
@@ -53,75 +52,6 @@ def load_media_part(path_str: str, max_dim: Optional[int] = None) -> types.Part:
             im_conv.save(buf, format=fmt, quality=92)
             return types.Part.from_bytes(data=buf.getvalue(), mime_type=mime)
     return types.Part.from_bytes(data=path.read_bytes(), mime_type=mime)
-
-
-def build_numbered_contact_grid(
-    image_paths: list[str],
-    cols: int = 4,
-) -> tuple[bytes, list[dict[str, Any]]]:
-    """Stitch candidate images into a numbered JPEG contact grid with `[#idx]` labels."""
-    cell_w, cell_h = 420, 360
-    header_h = 36
-    valid_meta: list[dict[str, Any]] = []
-    safe_cols = max(1, int(cols))
-    rows = max(1, math.ceil(len(image_paths) / safe_cols))
-    sheet = Image.new("RGB", (safe_cols * cell_w, rows * (cell_h + header_h)), (24, 26, 32))
-    draw = ImageDraw.Draw(sheet)
-
-    try:
-        font = ImageFont.truetype("arial.ttf", 18)
-    except Exception:
-        font = ImageFont.load_default()
-
-    for idx, raw_p in enumerate(image_paths):
-        r = idx // safe_cols
-        c = idx % safe_cols
-        x0 = c * cell_w
-        y0 = r * (cell_h + header_h)
-        p = resolve_path(raw_p)
-
-        draw.rectangle([x0 + 2, y0 + 2, x0 + cell_w - 3, y0 + header_h - 2], fill=(44, 52, 68))
-        label = f"[#{idx}] {p.name[:24]}"
-        try:
-            with Image.open(p) as im:
-                w, h = im.size
-                im_rgb = im.convert("RGB")
-                im_rgb.thumbnail((cell_w - 12, cell_h - 12), Image.Resampling.LANCZOS)
-                tw, th = im_rgb.size
-                px = x0 + (cell_w - tw) // 2
-                py = y0 + header_h + (cell_h - th) // 2
-                sheet.paste(im_rgb, (px, py))
-                label = f"[#{idx}] {w}x{h} | {p.name[:22]}"
-                valid_meta.append(
-                    {
-                        "index": idx,
-                        "file_path": str(p),
-                        "filename": p.name,
-                        "width": w,
-                        "height": h,
-                    }
-                )
-        except Exception as exc:
-            label = f"[#{idx}] CORRUPT/UNREADABLE"
-            valid_meta.append(
-                {
-                    "index": idx,
-                    "file_path": str(p),
-                    "filename": p.name,
-                    "error": str(exc),
-                }
-            )
-
-        draw.text((x0 + 8, y0 + 8), label, fill=(255, 242, 204), font=font)
-        draw.rectangle(
-            [x0 + 1, y0 + 1, x0 + cell_w - 2, y0 + cell_h + header_h - 2],
-            outline=(90, 98, 115),
-            width=2,
-        )
-
-    buf = io.BytesIO()
-    sheet.save(buf, format="JPEG", quality=90)
-    return buf.getvalue(), valid_meta
 
 
 def extract_json_text(response: Any) -> str:

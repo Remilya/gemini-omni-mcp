@@ -1,4 +1,4 @@
-"""Generalized Pydantic v2 schemas for structured Gemini vision and 3D CAD outputs."""
+"""Generalized Pydantic v2 schemas for structured Gemini 3D CAD outputs."""
 
 from __future__ import annotations
 
@@ -6,39 +6,6 @@ import re
 from typing import Literal, Optional
 
 from pydantic import BaseModel, Field, field_validator
-
-
-class CuratedRefSelection(BaseModel):
-    index: int = Field(description="0-based index of the candidate image in candidate_image_paths")
-    file_path: str = Field(description="Resolved path to the selected candidate image")
-    view_category: Literal[
-        "front",
-        "back",
-        "side",
-        "three_quarter",
-        "full_body",
-        "detail",
-        "environment",
-        "top_down",
-        "other",
-    ] = Field(description="Primary visual role or camera angle of this reference")
-    score: float = Field(ge=0.0, le=10.0, description="Quality score (0-10)")
-    what_it_is_good_for: str = Field(
-        description="Specific visual details clearly readable from this image"
-    )
-
-
-class CuratedRefsResponse(BaseModel):
-    selected_refs: list[CuratedRefSelection] = Field(
-        description="Top curated reference images sorted by score descending"
-    )
-    rejected_indices: list[int] = Field(
-        default_factory=list,
-        description="Indices of rejected blurry, cropped, occluded, or off-topic candidates",
-    )
-    curation_summary: str = Field(
-        description="Summary of coverage across angles, details, and overall quality"
-    )
 
 
 class MaterialHexLayer(BaseModel):

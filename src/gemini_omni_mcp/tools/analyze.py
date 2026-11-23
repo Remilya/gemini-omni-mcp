@@ -8,7 +8,11 @@ from urllib.parse import urlparse
 
 from google.genai import types
 
-from gemini_omni_mcp.client import generate_content_with_retry, get_client
+from gemini_omni_mcp.client import (
+    build_thinking_config,
+    generate_content_with_retry,
+    get_client,
+)
 from gemini_omni_mcp.config import resolve_path
 from gemini_omni_mcp.media import guess_mime, load_media_part
 
@@ -138,9 +142,10 @@ async def gemini_analyze(
 
     parts.append(types.Part.from_text(text=clean_prompt))
 
-    cfg_kwargs: dict[str, Any] = {
-        "thinking_config": types.ThinkingConfig(thinking_level=thinking_level.upper()),
-    }
+    cfg_kwargs: dict[str, Any] = {}
+    thinking_cfg = build_thinking_config(model, thinking_level)
+    if thinking_cfg is not None:
+        cfg_kwargs["thinking_config"] = thinking_cfg
     if system_instruction and system_instruction.strip():
         cfg_kwargs["system_instruction"] = system_instruction.strip()
 

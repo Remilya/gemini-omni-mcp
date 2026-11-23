@@ -14,6 +14,9 @@ def isolated_workspace(tmp_path, monkeypatch):
     monkeypatch.delenv("GEMINI_API_KEY", raising=False)
     monkeypatch.delenv("GOOGLE_API_KEY", raising=False)
     monkeypatch.delenv("OMNI_HARD_STOP_LIMIT_USD", raising=False)
+    monkeypatch.delenv("GEMINI_OMNI_TOOLSETS", raising=False)
     monkeypatch.delenv("GEMINI_OMNI_ENABLE_3D_TOOLS", raising=False)
+    monkeypatch.delenv("GEMINI_OMNI_ALLOW_OUTSIDE_WORKSPACE", raising=False)
+    monkeypatch.delenv("GEMINI_OMNI_ALLOW_CUSTOM_RENDER_CMD", raising=False)
     monkeypatch.delenv("GOOGLE_GENAI_USE_VERTEXAI", raising=False)
     return tmp_path

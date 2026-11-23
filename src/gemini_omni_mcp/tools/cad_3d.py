@@ -6,15 +6,26 @@ import ast
 import asyncio
 import json
 import re
+import shlex
 import shutil
 import subprocess
+import sys
 from typing import Any, Literal, Optional
 
 from google.genai import types
 from PIL import Image
 
-from gemini_omni_mcp.client import generate_content_with_retry, get_client
-from gemini_omni_mcp.config import get_workspace_root, logger, resolve_path
+from gemini_omni_mcp.client import (
+    build_thinking_config,
+    generate_content_with_retry,
+    get_client,
+)
+from gemini_omni_mcp.config import (
+    get_workspace_root,
+    is_custom_render_cmd_allowed,
+    logger,
+    resolve_path,
+)
 from gemini_omni_mcp.media import (
     extract_json_text,
     find_blender_executable,
@@ -88,12 +99,15 @@ async def vision_extract_3d_spec(
     parts.append(types.Part.from_text(text=prompt))
 
     client = get_client(context="vision_extract_3d_spec")
-    config = types.GenerateContentConfig(
-        thinking_config=types.ThinkingConfig(thinking_level="LOW"),
-        response_mime_type="application/json",
-        response_schema=Asset3DSpecResponse,
-        temperature=0.1,
-    )
+    spec_cfg_kwargs: dict[str, Any] = {
+        "response_mime_type": "application/json",
+        "response_schema": Asset3DSpecResponse,
+        "temperature": 0.1,
+    }
+    thinking_cfg = build_thinking_config(model, "low")
+    if thinking_cfg is not None:
+        spec_cfg_kwargs["thinking_config"] = thinking_cfg
+    config = types.GenerateContentConfig(**spec_cfg_kwargs)
 
     response = await asyncio.to_thread(
         generate_content_with_retry,
@@ -134,12 +148,15 @@ async def vision_rlaif_3d_critic(
     parts.append(types.Part.from_text(text=prompt))
 
     client = get_client(context="vision_rlaif_3d_critic")
-    config = types.GenerateContentConfig(
-        thinking_config=types.ThinkingConfig(thinking_level="LOW"),
-        response_mime_type="application/json",
-        response_schema=RLAIF3DCriticResponse,
-        temperature=0.1,
-    )
+    critic_cfg_kwargs: dict[str, Any] = {
+        "response_mime_type": "application/json",
+        "response_schema": RLAIF3DCriticResponse,
+        "temperature": 0.1,
+    }
+    thinking_cfg = build_thinking_config(model, "low")
+    if thinking_cfg is not None:
+        critic_cfg_kwargs["thinking_config"] = thinking_cfg
+    config = types.GenerateContentConfig(**critic_cfg_kwargs)
 
     response = await asyncio.to_thread(
         generate_content_with_retry,
@@ -176,6 +193,11 @@ async def gemini_3d_judge_and_autopatch(
     """
     script_file = resolve_path(cad_script_path)
     render_file = resolve_path(render_image_path)
+    if render_command and not is_custom_render_cmd_allowed():
+        raise PermissionError(
+            "Custom render_command execution is disabled by default. "
+            "Set GEMINI_OMNI_ALLOW_CUSTOM_RENDER_CMD=true to opt in."
+        )
     if not script_file.is_file():
         raise FileNotFoundError(f"CAD script not found: {script_file}")
     if not render_file.is_file():
@@ -270,12 +292,14 @@ async def gemini_3d_judge_and_autopatch(
         parts.append(types.Part.from_text(text=prompt))
 
         cfg_kwargs: dict[str, Any] = {
-            "thinking_config": types.ThinkingConfig(thinking_level=thinking_level.upper()),
             "response_mime_type": "application/json",
             "response_schema": ArgonJudgeEvaluation,
             "max_output_tokens": 4096,
             "temperature": 0.1,
         }
+        thinking_cfg = build_thinking_config(model, thinking_level)
+        if thinking_cfg is not None:
+            cfg_kwargs["thinking_config"] = thinking_cfg
         if cached_content_name and str(cached_content_name).startswith("cachedContents/"):
             cfg_kwargs["cached_content"] = cached_content_name
 
@@ -340,14 +364,18 @@ async def gemini_3d_judge_and_autopatch(
                     patch_parts.append(load_media_part(reference_image_paths[0], max_dim=1024))
                 patch_parts.append(types.Part.from_text(text=patch_prompt))
 
+                patch_cfg_kwargs: dict[str, Any] = {
+                    "max_output_tokens": 16384,
+                    "temperature": 0.1,
+                }
+                patch_thinking_cfg = build_thinking_config(patch_model, "low")
+                if patch_thinking_cfg is not None:
+                    patch_cfg_kwargs["thinking_config"] = patch_thinking_cfg
+
                 patch_resp = await client.aio.models.generate_content(
                     model=patch_model,
                     contents=patch_parts,
-                    config=types.GenerateContentConfig(
-                        thinking_config=types.ThinkingConfig(thinking_level="LOW"),
-                        max_output_tokens=16384,
-                        temperature=0.1,
-                    ),
+                    config=types.GenerateContentConfig(**patch_cfg_kwargs),
                 )
                 await asyncio.to_thread(
                     record_api_usage,
@@ -387,15 +415,21 @@ async def gemini_3d_judge_and_autopatch(
         iter_entry["script_rewritten"] = True
         iter_entry["backup_script_path"] = str(backup_path)
 
-        cmd_to_run = render_command
-        if not cmd_to_run:
+        if render_command:
+            if not is_custom_render_cmd_allowed():
+                raise PermissionError(
+                    "Custom render_command execution is disabled by default. "
+                    "Set GEMINI_OMNI_ALLOW_CUSTOM_RENDER_CMD=true to opt in."
+                )
+            cmd_args = shlex.split(render_command, posix=(sys.platform != "win32"))
+        else:
             blender_exe = find_blender_executable()
-            cmd_to_run = f'"{blender_exe}" -b -P "{script_file}"'
+            cmd_args = [blender_exe, "-b", "-P", str(script_file)]
 
         proc = await asyncio.to_thread(
             subprocess.run,
-            cmd_to_run,
-            shell=True,
+            cmd_args,
+            shell=False,
             cwd=str(workspace),
             capture_output=True,
             text=True,
