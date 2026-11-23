@@ -1,0 +1,58 @@
+[build-system]
+requires = ["hatchling>=1.25.0"]
+build-backend = "hatchling.build"
+
+[project]
+name = "gemini-omni-mcp"
+version = "1.0.0"
+description = "All-in-one Google GenAI Multimodal & Agentic MCP Server — Nano Banana 2.1, Gemini Omni Video, Gemini 3.8 Flash Swarm, Gemini 4 Argon, Imagen 3, TTS/Voices, Lyria 3.5, Context Caching & Real-Time USD Budget Kill-Switch."
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.11"
+authors = [{ name = "Remilya" }]
+keywords = [
+    "mcp",
+    "model-context-protocol",
+    "gemini",
+    "google-genai",
+    "multimodal",
+    "video-generation",
+    "tts",
+    "ai-agents",
+]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+dependencies = [
+    "google-genai>=2.21.0",
+    "mcp>=1.10.0",
+    "pillow>=10.0.0",
+    "pydantic>=2.7.0",
+    "tenacity>=8.2.0",
+    "httpx>=0.27.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0.0"]
+
+[project.scripts]
+gemini-omni-mcp = "gemini_omni_mcp.server:main"
+
+[project.urls]
+Homepage = "https://github.com/Remilya/gemini-omni-mcp"
+Repository = "https://github.com/Remilya/gemini-omni-mcp"
+Issues = "https://github.com/Remilya/gemini-omni-mcp/issues"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/gemini_omni_mcp"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

@@ -1,0 +1,18 @@
+{
+  "name": "gemini-omni",
+  "displayName": "Gemini Omni MCP",
+  "version": "1.0.0",
+  "description": "All-in-one Google GenAI multimodal and agentic MCP server: Nano Banana 2.1 image fusion/editing, Gemini Omni video studio, Gemini 3.8 Flash async swarm, Context Caching, TTS/Voices/Lyria 3.5 music, and real-time USD budget guard.",
+  "logo": "assets/logo.svg",
+  "suggestedPrompts": [
+    "Generate a 1080p 10s showcase video with gemini_video_studio and check the estimated session cost",
+    "Run a parallel gemini_async_swarm batch to analyze and refactor multiple source files with context caching",
+    "Synthesize a multi-speaker dialogue audio clip with gemini_audio_studio and check my remaining USD budget"
+  ],
+  "author": {
+    "name": "Remilya",
+    "url": "https://github.com/Remilya"
+  },
+  "homepage": "https://github.com/Remilya/gemini-omni-mcp",
+  "repository": "https://github.com/Remilya/gemini-omni-mcp"
+}

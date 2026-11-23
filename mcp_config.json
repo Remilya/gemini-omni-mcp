@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "gemini-omni": {
+      "command": "uv",
+      "args": [
+        "run",
+        "--directory",
+        "${PLUGIN_ROOT}",
+        "gemini-omni-mcp"
+      ]
+    }
+  }
+}
