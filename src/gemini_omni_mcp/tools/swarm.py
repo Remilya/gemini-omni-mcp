@@ -44,12 +44,12 @@ _CODE_SUFFIXES = {
 async def gemini_context_cache(
     paths: list[str],
     system_instruction: str,
-    model: str = "gemini-4-carbon",
+    model: str = "gemini-4-neon",
     ttl_minutes: int = 180,
 ) -> dict[str, Any]:
     """Prepare a deterministic context prefix bundle or explicit Google Context Cache (95% discount).
 
-    Gemini 4 models (`gemini-4-carbon`, `gemini-4-neon`, `gemini-4-hydrogen`, `gemini-4-argon`)
+    Gemini 4 models (`gemini-4-neon`, `gemini-4-hydrogen`, or opt-in `gemini-4-carbon` / `gemini-4-argon`)
     use automatic implicit caching on repeated prefixes, so a deterministic local prefix bundle
     is written directly under `<workspace>/.gemini-omni/cache/` for zero-latency reuse. Explicit
     `client.caches.create` is used for models that support explicit caching.
@@ -186,7 +186,7 @@ async def gemini_async_swarm(
     """High-concurrency async parallel worker swarm (up to 64 concurrent requests).
 
     Defaults to `gemini-4-hydrogen` with configurable `thinking_level` (`minimal`, `low`,
-    `medium`, `high`, `xhigh`). Also works with `gemini-4-neon`, `gemini-4-carbon`, or `gemini-3.5-flash-lite`.
+    `medium`, `high`, `xhigh`). Also works with `gemini-4-neon` (recommended frontier), opt-in `gemini-4-carbon`, or `gemini-3.5-flash-lite`.
 
     Each item in `tasks` accepts:
       `{"id": str, "prompt": str, "image_paths": list[str] (optional), "output_file": str (optional)}`

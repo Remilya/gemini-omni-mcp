@@ -6,7 +6,7 @@
 
 **Hepsi Bir Arada Google GenAI Multimodal, Decisions, Analyze & Canlı Dokümantasyon MCP Sunucusu**
 
-*Canlı Docs Puller · Gemini 4 (`Carbon`, `Neon`, `Hydrogen`) & Gemma 4 · YouTube/PDF Analyze · 48 Saatlik Files API · Decisions API (`gemini-decision-1`) · Deep Research · Multimodal Embeddings · Nano Banana 2.1 · Gemini Omni 1.2 Flash Video · SRT Deşifre & İfadeli TTS · Lyria 3.5 Müzik · Gerçek Zamanlı USD Bütçe Kilidi*
+*Canlı Docs Puller · Gemini 4 (`Neon`, `Hydrogen`, isteğe bağlı `Carbon`) & Gemma 4 · YouTube/PDF Analyze · 48 Saatlik Files API · Decisions API (`gemini-decision-1`) · Deep Research · Multimodal Embeddings · Nano Banana 2.1 · Gemini Omni 1.2 Flash Video · SRT Deşifre & İfadeli TTS · Lyria 3.5 Müzik · Gerçek Zamanlı USD Bütçe Kilidi*
 
 [English](README.md) | **Türkçe**
 
@@ -29,7 +29,7 @@ Editörün yanında harici bir CLI açmak sürekli pencere değiştirmek ve çı
 | Özellik | Ayrı CLI Penceresi | `gemini-omni-mcp` v2.1 |
 | --- | --- | --- |
 | **Canlı Resmi Dokümanlar** | Tarayıcı sekmesi veya ek MCP kurulumu | Dahili `gemini_search_docs` + `gemini_fetch_doc` (`gemini-api-docs-mcp.dev` + `llms.txt` yedekli) |
-| **Gemini 4 & Gemma 4** | Tek seferde tek kabuk çağrısı | `gemini-4-carbon`, `gemini-4-neon`, `gemini-4-hydrogen`, `gemma-4-31b-it` + **64 paralel asenkron işçi** |
+| **Gemini 4 & Gemma 4** | Tek seferde tek kabuk çağrısı | `gemini-4-neon` (varsayılan frontier), `gemini-4-hydrogen`, isteğe bağlı `gemini-4-carbon`, `gemma-4-31b-it` + **64 paralel asenkron işçi** |
 | **YouTube, PDF & Files API** | Her komutta tekrar bayrak girmek gerekir | `gemini_analyze` (YouTube URL, PDF, video, kod) + `gemini_files` (48 saatlik upload/list/get/delete) |
 | **Sıfır Token'lı Karar Motoru** | Yavaş metin üretimi + kırılgan JSON ayrıştırma | `gemini_decide` (`client.decisions.create`) ile 1.000 `noul`/`choice`/`score` sorusu (0 çıktı token'ı) |
 | **Multimodal Çıktılar** | Çıktıları elle kopyalama | PNG, MP4, WAV/MP3, `.srt`/`.md`/`.json` transkriptler, raporlar ve contact sheet doğrudan diske yazılır |
@@ -54,8 +54,8 @@ Editörün yanında harici bir CLI açmak sürekli pencere değiştirmek ve çı
 | **Görsel** | `gemini_image_edit` | `gemini-nano-banana-2.1` | Bölgesel düzenleme, maskeli `inpaint`/`outpaint` ve `2x`/`4x` AI yükseltme (Lanczos yedekli; kapatılan Imagen'in yerini alır) |
 | **Video** | `gemini_video_studio` | `gemini-omni-1.2-flash`, `gemini-omni-1.1-flash` | `3s`–`15s` video üretimi, `extend`, `edit`, `seamless_loop`, kareler arası geçiş, `1080p`/`4k` için otomatik URI indirme |
 | **Ses & STT** | `gemini_audio_studio` | `gemini-3.8-flash-tts`, `gemini-3.5-transcribe`, `lyria-3.5` | İfadeli TTS (`speech_metadata`), ses/video deşifresi (`text`, `md`, `json`, `.srt` altyazı, konuşmacı ayrımı, `smart`, `custom_vocabulary`), Voices API ve Lyria 3.5 |
-| **Önbellek** | `gemini_context_cache` | `gemini-4-carbon`, `gemini-4-hydrogen`, Gemini 3.x | Gemini 4 için deterministik implicit önbellek demeti (%95 indirim) + 3.x modelleri için açık `client.caches.create` |
-| **Swarm** | `gemini_async_swarm` | `gemini-4-hydrogen`, `gemini-4-neon`, `gemini-4-carbon` | `thinking_level` (`minimal`..`xhigh`), Code Execution, Google Search ve JSON Schema ile 64 paralel asenkron işçi |
+| **Önbellek** | `gemini_context_cache` | `gemini-4-neon`, `gemini-4-hydrogen`, Gemini 3.x | Gemini 4 için deterministik implicit önbellek demeti (%95 indirim; `gemini-4-carbon` isteğe bağlı) + 3.x modelleri için açık `client.caches.create` |
+| **Swarm** | `gemini_async_swarm` | `gemini-4-hydrogen`, `gemini-4-neon`, isteğe bağlı `gemini-4-carbon` | `thinking_level` (`minimal`..`xhigh`), Code Execution, Google Search ve JSON Schema ile 64 paralel asenkron işçi |
 | **Görsel QA** | `gemini_curate_refs` | `gemini-4-hydrogen` | Numaralı Pillow JPEG contact sheet oluşturur ve en net `top_k` referansı tek seferde seçer |
 | **FinOps & Modeller** | `gemini_cost_and_budget` | Çevrimdışı FinOps + Canlı API | Canlı `summary`, 26 modelli `pricing_table` (Gemma 4 dahil), `live_models` (`client.models.list`/`get`), `calculate_call`, `estimate_batch`, `set_budget_limit`, `reset_ledger` |
 
@@ -67,7 +67,7 @@ Yalnızca **15 çekirdek araçla** hafif modda çalıştırmak için `GEMINI_OMN
 | --- | --- | --- |
 | `vision_extract_3d_spec` | `gemini-4-hydrogen` + PIL | Piksel medyanı HEX örnekleme + yapısal PBR malzeme paleti, 3D oranlar ve üçgen bütçesi spesifikasyonu |
 | `vision_rlaif_3d_critic` | `gemini-4-hydrogen` | Çok açılı 3D render'ları referanslar ve `spec_rules` ile kıyaslayarak koordinat/mesh düzeltmeleri üretir |
-| `gemini_3d_judge_and_autopatch` | `gemini-4-carbon` + `gemini-4-hydrogen` | Üst düzey 3D görsel ve kod denetçisi; `.py` scriptlerini `ast.parse` kontrolüyle yamalar, Blender/özel render çalıştırır, hatada geri sarar ve 5 denemede devreyi keser |
+| `gemini_3d_judge_and_autopatch` | `gemini-4-neon` + `gemini-4-hydrogen` | Üst düzey 3D görsel ve kod denetçisi (`gemini-4-neon` varsayılan; kullanıcı isterse `gemini-4-carbon`); `.py` scriptlerini `ast.parse` kontrolüyle yamalar, 5 denemede devreyi keser |
 
 ---
 

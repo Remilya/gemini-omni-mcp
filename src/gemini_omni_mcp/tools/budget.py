@@ -22,9 +22,9 @@ from gemini_omni_mcp.pricing import (
 )
 
 SUPPORTED_MODELS = (
-    "gemini-4-carbon",
     "gemini-4-neon",
     "gemini-4-hydrogen",
+    "gemini-4-carbon",
     "gemini-4-argon",
     "gemini-3.5-flash-lite",
     "gemini-decision-1",

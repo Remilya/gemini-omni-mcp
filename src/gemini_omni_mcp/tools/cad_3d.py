@@ -164,11 +164,11 @@ async def gemini_3d_judge_and_autopatch(
     auto_rewrite_script_if_failed: bool = True,
     max_judge_iterations: int = 3,
     reset_retry_counter: bool = False,
-    model: str = "gemini-4-carbon",
+    model: str = "gemini-4-neon",
     patch_model: str = "gemini-4-hydrogen",
-    thinking_level: Literal["low", "medium", "high", "xhigh"] = "medium",
+    thinking_level: Literal["low", "medium", "high", "xhigh"] = "high",
 ) -> dict[str, Any]:
-    """Supreme visual + code judge (`gemini-4-carbon` / `gemini-4-neon`) & 3D script autopatcher.
+    """Supreme visual + code judge (`gemini-4-neon` default; `gemini-4-carbon` on user request) & 3D autopatcher.
 
     Audits rendered views and the 3D generator script, synthesizes targeted patches with
     `patch_model` if `score < 95`, validates Python syntax (`ast.parse`) before writing,

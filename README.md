@@ -6,7 +6,7 @@
 
 **All-in-one Google GenAI Multimodal, Decisions, Analyze & Live Docs MCP Server**
 
-*Live Docs Puller · Gemini 4 (`Carbon`, `Neon`, `Hydrogen`) & Gemma 4 · YouTube/PDF Analyze · 48h Files API · Decisions API (`gemini-decision-1`) · Deep Research · Multimodal Embeddings · Nano Banana 2.1 · Gemini Omni 1.2 Flash Video · SRT Transcribe & Expressive TTS · Lyria 3.5 Music · Real-Time USD Budget Guard*
+*Live Docs Puller · Gemini 4 (`Neon`, `Hydrogen`, opt-in `Carbon`) & Gemma 4 · YouTube/PDF Analyze · 48h Files API · Decisions API (`gemini-decision-1`) · Deep Research · Multimodal Embeddings · Nano Banana 2.1 · Gemini Omni 1.2 Flash Video · SRT Transcribe & Expressive TTS · Lyria 3.5 Music · Real-Time USD Budget Guard*
 
 **English** | [Türkçe](README.tr.md)
 
@@ -29,7 +29,7 @@ Opening a separate CLI app alongside your IDE forces constant window switching, 
 | Capability | Separate CLI Window | `gemini-omni-mcp` v2.1 |
 | --- | --- | --- |
 | **Live Official Docs** | Manual browser tabs or separate MCP setup | Built-in `gemini_search_docs` + `gemini_fetch_doc` (`gemini-api-docs-mcp.dev` + `llms.txt` fallback) |
-| **Gemini 4 & Gemma 4** | Single prompt per shell call | Full `gemini-4-carbon`, `gemini-4-neon`, `gemini-4-hydrogen`, `gemma-4-31b-it` + up to **64 parallel async workers** |
+| **Gemini 4 & Gemma 4** | Single prompt per shell call | Full `gemini-4-neon` (default frontier), `gemini-4-hydrogen`, opt-in `gemini-4-carbon`, `gemma-4-31b-it` + up to **64 parallel async workers** |
 | **YouTube, PDF & Files API** | Repeated manual CLI flags | `gemini_analyze` (YouTube URLs, PDFs, video, code) + `gemini_files` (48h upload/list/get/delete) |
 | **Zero-Token Decisions** | Slow text generation + brittle JSON parsing | Native `gemini_decide` (`client.decisions.create`) evaluating up to 1,000 `noul`/`choice`/`score` questions with 0 output tokens |
 | **Multimodal Deliverables** | Copy-paste text outputs manually | Saves PNGs, MP4s, WAV/MP3s, `.srt`/`.md`/`.json` transcripts, reports, and contact sheets directly to workspace |
@@ -54,8 +54,8 @@ Opening a separate CLI app alongside your IDE forces constant window switching, 
 | **Images** | `gemini_image_edit` | `gemini-nano-banana-2.1` | Localized editing, masked `inpaint`/`outpaint`, & `2x`/`4x` AI upscaling (with Lanczos fallback; replaces shut-down Imagen) |
 | **Video** | `gemini_video_studio` | `gemini-omni-1.2-flash`, `gemini-omni-1.1-flash` | Stateful `3s`–`15s` video generation, `extend`, `edit`, `seamless_loop`, two-frame interpolation, auto URI delivery for `1080p`/`4k` |
 | **Audio & STT** | `gemini_audio_studio` | `gemini-3.8-flash-tts`, `gemini-3.5-transcribe`, `lyria-3.5` | Expressive TTS (`speech_metadata`), audio/video STT (`text`, `md`, `json`, `.srt` captions, diarization, `smart`, `custom_vocabulary`), Voices API, & Lyria 3.5 music |
-| **Context** | `gemini_context_cache` | `gemini-4-carbon`, `gemini-4-hydrogen`, Gemini 3.x | Deterministic implicit prefix bundles for Gemini 4 (95% read discount) & explicit `client.caches.create` for 3.x |
-| **Swarm** | `gemini_async_swarm` | `gemini-4-hydrogen`, `gemini-4-neon`, `gemini-4-carbon` | Up to 64 parallel async workers with `thinking_level` (`minimal`..`xhigh`), Code Execution, Google Search, & JSON Schema |
+| **Context** | `gemini_context_cache` | `gemini-4-neon`, `gemini-4-hydrogen`, Gemini 3.x | Deterministic implicit prefix bundles for Gemini 4 (95% read discount; `gemini-4-carbon` opt-in) & explicit `client.caches.create` for 3.x |
+| **Swarm** | `gemini_async_swarm` | `gemini-4-hydrogen`, `gemini-4-neon`, opt-in `gemini-4-carbon` | Up to 64 parallel async workers with `thinking_level` (`minimal`..`xhigh`), Code Execution, Google Search, & JSON Schema |
 | **Vision QA** | `gemini_curate_refs` | `gemini-4-hydrogen` | Builds a numbered Pillow JPEG contact grid and ranks the sharpest `top_k` references in one pass |
 | **FinOps & Models** | `gemini_cost_and_budget` | Offline FinOps + Live API | Real-time `summary`, 26-model `pricing_table` (incl. Gemma 4), `live_models` (`client.models.list`/`get`), `calculate_call`, `estimate_batch`, `set_budget_limit`, `reset_ledger` |
 
@@ -67,7 +67,7 @@ Set `GEMINI_OMNI_ENABLE_3D_TOOLS=false` or pass `--no-3d-tools` to run in lean *
 | --- | --- | --- |
 | `vision_extract_3d_spec` | `gemini-4-hydrogen` + PIL | Deterministic pixel region HEX sampling + structured PBR material palette, 3D proportions & triangle budget spec |
 | `vision_rlaif_3d_critic` | `gemini-4-hydrogen` | Multi-angle render evaluation against references & custom `spec_rules` with concrete coordinate/mesh fixes |
-| `gemini_3d_judge_and_autopatch` | `gemini-4-carbon` + `gemini-4-hydrogen` | Supreme 3D visual & script auditor; patches `.py` scripts with `ast.parse` guard, runs Blender/custom render, rolls back on error, 5-attempt circuit breaker |
+| `gemini_3d_judge_and_autopatch` | `gemini-4-neon` + `gemini-4-hydrogen` | Supreme 3D visual & script auditor (`gemini-4-neon` default; `gemini-4-carbon` opt-in); patches `.py` scripts with `ast.parse` guard, runs Blender/custom render, 5-attempt circuit breaker |
 
 ---
 

@@ -2,7 +2,7 @@
   "name": "gemini-omni",
   "displayName": "Gemini Omni MCP",
   "version": "2.1.0",
-  "description": "All-in-one Google GenAI v2.1 MCP server (18 tools): Live Docs Puller, Gemini 4 (Carbon/Neon/Hydrogen) & Gemma 4, Decisions API, YouTube/PDF/media analysis, 48h Files API, SRT/MD/JSON transcription, Deep Research, Nano Banana 2.1, Omni Video, TTS/Lyria 3.5 & USD budget guard.",
+  "description": "All-in-one Google GenAI v2.1 MCP server (18 tools): Live Docs Puller, Gemini 4 (Neon/Hydrogen, opt-in Carbon) & Gemma 4, Decisions API, YouTube/PDF/media analysis, 48h Files API, SRT/MD/JSON transcription, Deep Research, Nano Banana 2.1, Omni Video, TTS/Lyria 3.5 & USD budget guard.",
   "logo": "assets/logo.svg",
   "suggestedPrompts": [
     "Search live Gemini API docs for the Interactions API and Decisions API, then scaffold a working Python workflow",

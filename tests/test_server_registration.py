@@ -3,13 +3,23 @@
 from __future__ import annotations
 
 import asyncio
+import inspect
 
 import pytest
 
 from gemini_omni_mcp.server import create_server
 from gemini_omni_mcp.tools import CORE_TOOL_NAMES, OPTIONAL_3D_TOOL_NAMES
+from gemini_omni_mcp.tools.analyze import gemini_analyze
 from gemini_omni_mcp.tools.budget import gemini_cost_and_budget
-from gemini_omni_mcp.tools.swarm import gemini_async_swarm
+from gemini_omni_mcp.tools.cad_3d import gemini_3d_judge_and_autopatch
+from gemini_omni_mcp.tools.swarm import gemini_async_swarm, gemini_context_cache
+
+
+def test_default_model_parameters():
+    assert inspect.signature(gemini_3d_judge_and_autopatch).parameters["model"].default == "gemini-4-neon"
+    assert inspect.signature(gemini_context_cache).parameters["model"].default == "gemini-4-neon"
+    assert inspect.signature(gemini_async_swarm).parameters["model"].default == "gemini-4-hydrogen"
+    assert inspect.signature(gemini_analyze).parameters["model"].default == "gemini-4-hydrogen"
 
 
 def test_server_registers_all_18_tools_by_default():

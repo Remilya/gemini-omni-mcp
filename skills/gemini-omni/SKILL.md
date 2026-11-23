@@ -18,9 +18,9 @@ Before writing or refactoring Google GenAI SDK code, **always pull live document
 
 | Tier / Model | Best For | Thinking Levels | Paid Rates (per 1M) |
 | --- | --- | --- | --- |
-| `gemini-4-carbon` | Deepest coding, architecture & 3D judge | `low`, `medium` (default), `high` | `$2.00` / `$10.00` intro thru Nov 30 (`$4.00` / `$20.00` after) |
-| `gemini-4-neon` | Fast frontier coding & complex science | `low`, `medium`, `high` (default), `xhigh` | `$3.00` / `$15.00` |
+| `gemini-4-neon` | **Default frontier:** faster end-to-end coding, complex science & 3D judge | `low`, `medium`, `high` (default), `xhigh` | `$3.00` / `$15.00` |
 | `gemini-4-hydrogen` | Everyday coding, analyze, swarms, vision QA (Free + Paid) | `low`, `medium`, `high` (default), `xhigh` | `$1.50` / `$7.50` |
+| `gemini-4-carbon` | *Opt-in only* (use when user explicitly requests Carbon) | `low`, `medium` (default), `high` | `$2.00` / `$10.00` intro thru Nov 30 (`$4.00` / `$20.00` after) |
 | `gemini-3.5-flash-lite` | Ultra-fast high-volume classification/drafts | `minimal` (default), `low`, `medium`, `high` | `$0.30` / `$2.50` |
 | `gemma-4-31b-it` / `gemma-4-26b-a4b-it` | Lightweight open-weight inference (Free Tier) | — | Free (`$0.00`) |
 | `gemini-decision-1` | Zero-output-token `noul`/`choice`/`score` routing | Forward-pass calibrated probabilities | `$0.10` input / `$0.00` output |
@@ -41,4 +41,4 @@ Before writing or refactoring Google GenAI SDK code, **always pull live document
 ### Optional 3D/CAD RLAIF Suite (Disable with `--no-3d-tools` or `GEMINI_OMNI_ENABLE_3D_TOOLS=false`)
 - `vision_extract_3d_spec` (`gemini-4-hydrogen` + PIL HEX telemetry)
 - `vision_rlaif_3d_critic` (`gemini-4-hydrogen` multi-angle critique)
-- `gemini_3d_judge_and_autopatch` (`gemini-4-carbon` judge + `gemini-4-hydrogen` patcher with `ast.parse` guard and 5-retry circuit breaker)
+- `gemini_3d_judge_and_autopatch` (`gemini-4-neon` default judge + `gemini-4-hydrogen` patcher with `ast.parse` guard and 5-retry circuit breaker; pass `model="gemini-4-carbon"` when requested)
