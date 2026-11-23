@@ -1,4 +1,4 @@
-"""Offline tests for v3.0 security guardrails and google-genai >= 3.2 SDK fixes."""
+"""Offline tests for security guardrails and google-genai >= 3.2 SDK fixes."""
 
 from __future__ import annotations
 

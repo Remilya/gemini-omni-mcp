@@ -1,9 +1,9 @@
 ---
 name: gemini-omni
-description: Lean, hardened Google GenAI v3.0 workflow across Gemini 4 (Neon, Hydrogen, opt-in Carbon), Gemma 4, Live Docs Puller, Nano Banana 2.1 images, Omni Video, Audio/Transcribe/Voices/Lyria 3.5, and FinOps USD budget guardrails.
+description: Lean, hardened Google GenAI workflow across Gemini 4 (Neon, Hydrogen, opt-in Carbon), Gemma 4, Live Docs Puller, Nano Banana 2.1 images, Omni Video, Audio/Transcribe/Voices/Lyria 3.5, and FinOps USD budget guardrails.
 ---
 
-# Gemini Omni MCP v3.0 — Agent Operating Guide
+# Gemini Omni MCP — Agent Operating Guide
 
 `gemini-omni-mcp` exposes **6 lean core tools** by default to minimize context-window overhead, plus modular opt-in toolsets (`swarm`, `research`, `3d`, or `all` for 13 tools).
 

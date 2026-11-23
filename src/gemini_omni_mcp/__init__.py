@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-__version__ = "3.0.0"
+__version__ = "1.0.0"
 
 
 def create_server(*args, **kwargs):

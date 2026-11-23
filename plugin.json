@@ -1,8 +1,8 @@
 {
   "name": "gemini-omni",
   "displayName": "Gemini Omni MCP",
-  "version": "3.0.0",
-  "description": "Lean, hardened Google GenAI v3.0 MCP server (6 default core tools + opt-in swarm/research/3d toolsets): Nano Banana 2.1, Omni Video, Audio/Transcribe/Voices/Lyria 3.5, Gemini 4 & Gemma 4 Analysis, Live Docs Puller & Real-Time USD Budget Guard.",
+  "version": "1.0.0",
+  "description": "All-in-one Google GenAI MCP server (6 core tools + opt-in swarm/research/3d toolsets): Nano Banana 2.1, Omni Video, Audio/Transcribe/Voices/Lyria 3.5, Gemini 4 & Gemma 4 Analysis, Live Docs Puller & Real-Time USD Budget Guard.",
   "logo": "assets/logo.svg",
   "suggestedPrompts": [
     "Search live Gemini API docs with gemini_docs and verify the latest Gemini 4 and Interactions API parameters",

@@ -1,4 +1,4 @@
-"""Offline tests for modular v3.0 MCP toolset registration, budget actions, and defaults."""
+"""Offline tests for modular MCP toolset registration, budget actions, and defaults."""
 
 from __future__ import annotations
 

@@ -1,6 +1,6 @@
 {
   "name": "gemini-omni",
-  "version": "3.0.0",
+  "version": "1.0.0",
   "description": "Lean, hardened Google GenAI MCP server & agent skills (6 core tools by default, modular opt-in swarm/research/3d): Gemini 4 (Neon/Hydrogen, opt-in Carbon), Gemma 4, Live Docs Puller, Nano Banana 2.1, Omni Video, Transcribe/TTS/Lyria 3.5, and USD budget guard.",
   "author": {
     "name": "Remilya"

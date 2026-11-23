@@ -1,4 +1,4 @@
-"""Offline tests for v3.0 core tools (`gemini_docs`, `gemini_image`, `gemini_audio`, `gemini_analyze`, `gemini_budget`) and opt-in tools."""
+"""Offline tests for core tools (`gemini_docs`, `gemini_image`, `gemini_audio`, `gemini_analyze`, `gemini_budget`) and opt-in tools."""
 
 from __future__ import annotations
 
