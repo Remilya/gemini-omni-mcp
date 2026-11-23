@@ -1,4 +1,4 @@
-"""Context caching and high-concurrency async worker swarm tools."""
+"""Context caching and high-concurrency Gemini 4 async worker swarm tools."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ import asyncio
 import re
 import time
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, Literal, Optional
 
 from google.genai import types
 
@@ -44,13 +44,15 @@ _CODE_SUFFIXES = {
 async def gemini_context_cache(
     paths: list[str],
     system_instruction: str,
-    model: str = "gemini-4-argon",
+    model: str = "gemini-4-carbon",
     ttl_minutes: int = 180,
 ) -> dict[str, Any]:
-    """Upload files, directories, or reference images to Google Context Cache (up to 95% input discount).
+    """Prepare a deterministic context prefix bundle or explicit Google Context Cache (95% discount).
 
-    Also writes a deterministic implicit prefix fallback bundle under `<workspace>/.gemini-omni/cache/`
-    if explicit caching is unavailable or below the model's minimum token threshold.
+    Gemini 4 models (`gemini-4-carbon`, `gemini-4-neon`, `gemini-4-hydrogen`, `gemini-4-argon`)
+    use automatic implicit caching on repeated prefixes, so a deterministic local prefix bundle
+    is written directly under `<workspace>/.gemini-omni/cache/` for zero-latency reuse. Explicit
+    `client.caches.create` is used for models that support explicit caching.
     """
     if not paths:
         raise ValueError("paths list cannot be empty.")
@@ -103,6 +105,22 @@ async def gemini_context_cache(
     cache_dir.mkdir(parents=True, exist_ok=True)
     imp_bundle_path = cache_dir / f"implicit_cache_{safe_model}.txt"
     imp_bundle_path.write_text("\n\n".join(text_chunks), encoding="utf-8")
+
+    # Gemini 4 uses automatic implicit caching only; skip unsupported explicit create calls.
+    if model.strip().lower().startswith("gemini-4"):
+        return {
+            "status": "cached_implicit_prefix",
+            "cached_content_name": f"implicit:{imp_bundle_path}",
+            "model": model,
+            "ttl_minutes": ttl_minutes,
+            "files_cached_count": len(loaded_files),
+            "files_cached": loaded_files,
+            "note": (
+                f"Gemini 4 uses automatic implicit caching (95% discount); deterministic "
+                f"prefix bundle ready ({imp_bundle_path.name})."
+            ),
+            "cost_usd": 0.0,
+        }
 
     client = get_client(context=f"gemini_context_cache:{model}")
     ttl_str = f"{max(1, int(ttl_minutes)) * 60}s"
@@ -157,15 +175,18 @@ async def gemini_context_cache(
 
 async def gemini_async_swarm(
     tasks: list[dict[str, Any]],
-    model: str = "gemini-3.8-flash",
+    model: str = "gemini-4-hydrogen",
     cached_content_name: Optional[str] = None,
     concurrency: int = 20,
-    thinking_level: str = "HIGH",
+    thinking_level: Literal["minimal", "low", "medium", "high", "xhigh"] = "high",
     enable_code_execution: bool = True,
     enable_google_search: bool = False,
     response_json_schema: Optional[dict[str, Any]] = None,
 ) -> dict[str, Any]:
     """High-concurrency async parallel worker swarm (up to 64 concurrent requests).
+
+    Defaults to `gemini-4-hydrogen` with configurable `thinking_level` (`minimal`, `low`,
+    `medium`, `high`, `xhigh`). Also works with `gemini-4-neon`, `gemini-4-carbon`, or `gemini-3.5-flash-lite`.
 
     Each item in `tasks` accepts:
       `{"id": str, "prompt": str, "image_paths": list[str] (optional), "output_file": str (optional)}`

@@ -24,12 +24,17 @@ from gemini_omni_mcp.pricing import (
 )
 
 
-def get_client(estimated_next_cost_usd: float = 0.0, context: str = "") -> genai.Client:
+def get_client(
+    estimated_next_cost_usd: float = 0.0,
+    context: str = "",
+    api_version: Optional[str] = None,
+) -> genai.Client:
     """Create a `google.genai.Client` after enforcing the hard-stop USD budget limit.
 
     Supports both:
       - Gemini Developer API (`GOOGLE_API_KEY` or `GEMINI_API_KEY`)
       - Vertex AI (`GOOGLE_GENAI_USE_VERTEXAI=true/1/yes`)
+    Pass `api_version="v1beta"` for beta APIs such as Decisions, Transcribe, and Deep Research.
     """
     load_dotenv_if_present(override=False)
     enforce_hard_budget_limit(estimated_next_cost_usd, context=context)
@@ -45,7 +50,10 @@ def get_client(estimated_next_cost_usd: float = 0.0, context: str = "") -> genai
         or ""
     ).strip()
 
-    http_opts = types.HttpOptions(timeout=75_000)
+    http_opts_kwargs: dict[str, Any] = {"timeout": 75_000}
+    if api_version:
+        http_opts_kwargs["api_version"] = api_version
+    http_opts = types.HttpOptions(**http_opts_kwargs)
     if use_vertex:
         project = os.environ.get("GOOGLE_CLOUD_PROJECT")
         location = os.environ.get("GOOGLE_CLOUD_LOCATION", "us-central1")

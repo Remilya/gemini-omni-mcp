@@ -2,65 +2,90 @@
 
 <img src="assets/logo.svg" alt="Gemini Omni MCP Logo" width="110" />
 
-# Gemini Omni MCP
+# Gemini Omni MCP v2.0
 
-**All-in-one Google GenAI Multimodal & Agentic MCP Server**
+**All-in-one Google GenAI Multimodal, Decisions & Live Docs MCP Server**
 
-*Nano Banana 2.1 · Gemini Omni 1.2 Flash Video · Gemini 3.8 Flash Async Swarm · Gemini 4 Argon · Imagen 3 · Expressive TTS & Voices API · Lyria 3.5 Music · Context Caching · Real-Time USD Hard-Stop Budget Guard*
+*Live Docs Puller · Gemini 4 (`Carbon`, `Neon`, `Hydrogen`) · Decisions API (`gemini-decision-1`) · Deep Research · Multimodal Embeddings · Nano Banana 2.1 · Gemini Omni 1.2 Flash Video · Transcribe STT & Expressive TTS · Lyria 3.5 Music · Real-Time USD Hard-Stop Budget Guard*
 
 **English** | [Türkçe](README.tr.md)
 
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/downloads/)
 [![MCP Compatible](https://img.shields.io/badge/MCP-2.x%20%26%201.x-purple.svg)](https://modelcontextprotocol.io/)
-[![google-genai](https://img.shields.io/badge/google--genai-%3E%3D2.21.0-4285F4.svg)](https://github.com/googleapis/python-genai)
+[![google-genai](https://img.shields.io/badge/google--genai-%3E%3D3.2.0-4285F4.svg)](https://github.com/googleapis/python-genai)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
 </div>
 
 ---
 
-## Why MCP instead of Gemini CLI?
+## Why MCP instead of a Standalone CLI?
 
-Google teams often recommend opening **Gemini CLI** alongside your editor — which means switching windows, maintaining a separate interactive prompt session, and manually copying outputs back into your repo.
+Opening a separate CLI app alongside your IDE forces constant window switching, stale context, and manual file wrangling.
 
-**`gemini-omni-mcp` puts Google's entire multimodal & high-concurrency GenAI stack directly inside any MCP-compatible AI agent** (Antigravity, Claude Code, Cursor, Codex, VS Code, Claude Desktop) so your coding agent calls Gemini autonomously inside the same workflow:
+**`gemini-omni-mcp` embeds Google's entire November 2026 GenAI stack — *plus* a zero-cost Live Docs Puller — directly inside any MCP-compatible coding agent** (Antigravity, Claude Code, Cursor, Codex, VS Code, Claude Desktop):
 
-| Capability | Separate Gemini CLI App | `gemini-omni-mcp` |
+| Capability | Separate CLI Window | `gemini-omni-mcp` v2.0 |
 | --- | --- | --- |
-| **Workflow Integration** | Separate terminal window & manual context switching | Native tool calls inside Antigravity, Claude Code, Cursor, Codex, VS Code |
-| **Multimodal Output** | Mostly text/code chat loop | Saves PNGs, MP4s, WAV/MP3s, contact sheets & JSON directly to your workspace |
-| **Video & Audio Studio** | Manual scripts or separate studio tools | Stateful `gemini-omni-1.2-flash` video (`extend`/`edit`/`loop`), TTS, Voice Design & Lyria 3.5 |
-| **High-Concurrency Fan-Out** | Single interactive prompt at a time | `gemini_async_swarm` runs up to **64 parallel async workers** with Context Caching |
+| **Live Official Docs** | Manual browser tabs or separate MCP setup | Built-in `gemini_search_docs` + `gemini_fetch_doc` (`gemini-api-docs-mcp.dev` + `llms.txt` fallback) |
+| **Gemini 4 Models** | One interactive prompt at a time | Full `gemini-4-carbon`, `gemini-4-neon`, `gemini-4-hydrogen` + up to **64 parallel async swarm workers** |
+| **Zero-Token Decisions** | Slow text generation + brittle JSON parsing | Native `gemini_decide` (`client.decisions.create`) evaluating up to 1,000 `noul`/`choice`/`score` questions with 0 output tokens |
+| **Multimodal Files** | Copy-paste text outputs manually | Saves PNGs, MP4s, WAV/MP3s, Markdown reports, contact sheets, and embeddings straight to your workspace |
 | **API Spend Safety** | No built-in USD kill-switch | Real-time usage ledger + automatic `OMNI_HARD_STOP_LIMIT_USD` lock |
-| **Structured 3D / Vision QA** | Ad-hoc prompting | Strict Pydantic v2 schemas, PIL pixel sampling, & optional Blender RLAIF autopatcher |
 
 ---
 
-## Tool Matrix (12 Tools: 9 Core + 3 Optional 3D/CAD)
+## Tool Matrix (16 Tools: 13 Core + 3 Optional 3D/CAD)
 
-### Core Multimodal, Swarm & FinOps Tools (Always Enabled)
+### Core Tools (Always Enabled)
 
-| Tool | Primary Model(s) | Capabilities |
-| --- | --- | --- |
-| `gemini_image_fusion` | `gemini-nano-banana-2.1`, `gemini-3-pro-image` | Multi-reference fusion (up to 14 refs + 1 style anchor), `freeform` / `character_sheet` / `architectural_sheet` / `story_scene` / `pixel_sprite` presets, `0.5K`–`4K` `ImageConfig` |
-| `gemini_image_edit` | `gemini-nano-banana-2.1` | Localized conversational image editing with up to 6 extra reference images while keeping unmentioned areas intact |
-| `imagen_studio` | `imagen-3.0-generate-002`, `imagen-3.0-capability-001`, `imagen-3.0-upscale-001` | Generation, masked inpainting/outpainting, and 2x/4x upscaling with automatic Gemini / Lanczos fallback on Developer API keys |
-| `gemini_video_studio` | `gemini-omni-1.2-flash`, `gemini-omni-1.1-flash` | Stateful video generation (`3s`–`15s`), extension, conversational editing, seamless loops, two-frame interpolation (`start_frame_path` → `end_frame_path`), auto URI delivery for `1080p`/`4k` |
-| `gemini_audio_studio` | `gemini-3.8-flash-tts`, `gemini-3.8-flash-lite-tts`, `lyria-3.5` | Expressive single/multi-speaker TTS via Interactions `speech_metadata`, Voices API (`voice_design`, `voice_remix`, `voice_replicate`, `voice_list`), & Lyria 3.5 music generation |
-| `gemini_context_cache` | `gemini-4-argon`, `gemini-3.8-flash` | Explicit Context Caching (`client.caches.create`) for up to 95% input token savings + deterministic implicit prefix fallback bundle |
-| `gemini_async_swarm` | `gemini-3.8-flash` (or any model) | Parallel `asyncio.Semaphore` worker pool (up to 64 concurrent tasks) with Code Execution, Google Search, JSON Schema, & direct `output_file` saving |
-| `gemini_curate_refs` | `gemini-3.8-flash` | Builds a numbered Pillow JPEG contact grid and selects/ranks the sharpest `top_k` references in one pass |
-| `gemini_cost_and_budget` | Offline FinOps Engine | Real-time spend `summary`, full 19-model `pricing_table`, `calculate_call`, `estimate_batch` (Standard vs Batch), `set_budget_limit`, `reset_ledger` |
+| Category | Tool | Model(s) / Upstream | Capabilities |
+| --- | --- | --- | --- |
+| **Live Docs** | `gemini_search_docs` | `gemini-api-docs-mcp.dev` + `llms.txt` | Search latest Google Gemini API & SDK docs by `language`, `scope`, `source`, `api` ($0.00 cost) |
+| **Live Docs** | `gemini_fetch_doc` | `gemini-api-docs-mcp.dev` + `aistudio.google.com` | Fetch doc chunks by `chunk_id` or clean `.md` pages by slug/allowlisted HTTPS URL ($0.00 cost) |
+| **Decisions** | `gemini_decide` | `gemini-decision-1` | Single forward-pass `noul` (yes/no), `choice`, and `score` evaluations over text, PDFs, audio, images, video (0 output tokens) |
+| **Agents** | `gemini_deep_research` | `deep-research-preview-04-2026`, `deep-research-max-preview-04-2026`, `antigravity-preview-09-2026` | Start/poll autonomous multi-step background research via Interactions API & save Markdown reports |
+| **Embeddings** | `gemini_embed` | `gemini-embedding-2` | Unified multimodal embeddings for text, images, audio, video & PDFs + pairwise cosine similarity matrix |
+| **Images** | `gemini_image_fusion` | `gemini-nano-banana-2.1`, `gemini-3.1-flash-image`, `gemini-3-pro-image` | Multi-reference fusion (up to 14 refs + 1 style anchor), turnaround/architectural/sprite presets, `0.5K`–`4K` `ImageConfig` |
+| **Images** | `gemini_image_edit` | `gemini-nano-banana-2.1` | Localized editing, masked `inpaint`/`outpaint`, & `2x`/`4x` AI upscaling (with Lanczos fallback; replaces shut-down Imagen) |
+| **Video** | `gemini_video_studio` | `gemini-omni-1.2-flash`, `gemini-omni-1.1-flash` | Stateful `3s`–`15s` video generation, `extend`, `edit`, `seamless_loop`, two-frame interpolation, auto URI delivery for `1080p`/`4k` |
+| **Audio** | `gemini_audio_studio` | `gemini-3.8-flash-tts`, `gemini-3.5-transcribe`, `lyria-3.5` | Expressive TTS (`speech_metadata`), STT (`verbatim`, speaker diarization, word timestamps, `smart`, `custom_vocabulary`), Voices API, & Lyria 3.5 music |
+| **Context** | `gemini_context_cache` | `gemini-4-carbon`, `gemini-4-hydrogen`, Gemini 3.x | Deterministic implicit prefix bundles for Gemini 4 (95% read discount) & explicit `client.caches.create` for 3.x |
+| **Swarm** | `gemini_async_swarm` | `gemini-4-hydrogen`, `gemini-4-neon`, `gemini-4-carbon` | Up to 64 parallel async workers with `thinking_level` (`minimal`..`xhigh`), Code Execution, Google Search, & JSON Schema |
+| **Vision QA** | `gemini_curate_refs` | `gemini-4-hydrogen` | Builds a numbered Pillow JPEG contact grid and ranks the sharpest `top_k` references in one pass |
+| **FinOps** | `gemini_cost_and_budget` | Offline FinOps Engine | Real-time `summary`, 24-model `pricing_table`, `calculate_call`, `estimate_batch`, `set_budget_limit`, `reset_ledger` |
 
 ### Optional 3D / CAD RLAIF Suite (Enabled by Default; Toggleable)
 
-Set `GEMINI_OMNI_ENABLE_3D_TOOLS=false` or pass `--no-3d-tools` to run in lean **9-tool mode**.
+Set `GEMINI_OMNI_ENABLE_3D_TOOLS=false` or pass `--no-3d-tools` to run in lean **13-tool mode**.
 
 | Tool | Primary Model(s) | Capabilities |
 | --- | --- | --- |
-| `vision_extract_3d_spec` | `gemini-3.8-flash` + PIL | Deterministic pixel region HEX sampling + structured PBR material palette, 3D proportions & triangle budget spec |
-| `vision_rlaif_3d_critic` | `gemini-3.8-flash` | Multi-angle render evaluation against references & custom `spec_rules` with concrete coordinate/mesh fix items |
-| `argon_judge_and_autopatch` | `gemini-4-argon` + `gemini-3.8-flash` | Supreme 3D visual & script auditor; rewrites `.py` generator scripts, validates syntax (`ast.parse`), runs headless Blender / custom `render_command`, rolls back on errors, and stops at 5 attempts |
+| `vision_extract_3d_spec` | `gemini-4-hydrogen` + PIL | Deterministic pixel region HEX sampling + structured PBR material palette, 3D proportions & triangle budget spec |
+| `vision_rlaif_3d_critic` | `gemini-4-hydrogen` | Multi-angle render evaluation against references & custom `spec_rules` with concrete coordinate/mesh fixes |
+| `gemini_3d_judge_and_autopatch` | `gemini-4-carbon` + `gemini-4-hydrogen` | Supreme 3D visual & script auditor; patches `.py` scripts with `ast.parse` guard, runs Blender/custom render, rolls back on error, 5-attempt circuit breaker |
+
+---
+
+## Live Docs Puller & Official Google Agent Setup
+
+`gemini-omni-mcp` already integrates live documentation search (`gemini_search_docs`) and Markdown page fetching (`gemini_fetch_doc`) directly into your MCP toolset — with **zero API key required** and automatic fallback to `https://aistudio.google.com/llms.txt`.
+
+If you also want Google's standalone official agent ecosystem tools alongside `gemini-omni-mcp`:
+
+```bash
+# Official standalone Gemini Docs MCP server
+npx add-mcp "https://gemini-api-docs-mcp.dev"
+
+# Official Gemini API coding agent skills (SDK rules & syntax)
+npx skills add google-gemini/gemini-skills --skill gemini-api-dev
+
+# Antigravity single-command plugin install (official skills + docs MCP)
+agy plugin install https://github.com/google-gemini/gemini-skills
+
+# Official zero-dependency Go CLI for direct terminal Gemini API calls
+curl -fsSL https://raw.githubusercontent.com/google-gemini/gemini-api-cli/main/scripts/install.sh | bash
+```
 
 ---
 
@@ -68,29 +93,25 @@ Set `GEMINI_OMNI_ENABLE_3D_TOOLS=false` or pass `--no-3d-tools` to run in lean *
 
 ### Prerequisites
 - Python **3.11+** (or [`uv`](https://docs.astral.sh/uv/))
-- A **Gemini Developer API key** (`GEMINI_API_KEY` or `GOOGLE_API_KEY`) — or Vertex AI credentials
+- `google-genai>=3.2.0` (installed automatically via `uv` or `pip`)
+- A **Gemini Developer API key** (`GEMINI_API_KEY` or `GOOGLE_API_KEY`) for generation calls (Docs Puller works with no key!)
 
 ### Option A: Zero-Install via `uvx` / `uv` (Recommended)
 
-Run straight from GitHub (or your local clone):
-
 ```bash
-# Run from GitHub with uvx
+# Run directly from GitHub with uvx
 uvx --from git+https://github.com/Remilya/gemini-omni-mcp gemini-omni-mcp
 
-# Or run from a local clone
+# Or from a local clone
 git clone https://github.com/Remilya/gemini-omni-mcp.git
 cd gemini-omni-mcp
 uv run gemini-omni-mcp --list-tools
 ```
 
-### Option B: Install with `pip` / `pipx`
+### Option B: Install with `pip`
 
 ```bash
 pip install git+https://github.com/Remilya/gemini-omni-mcp.git
-# Or editable local install
-pip install -e .
-
 gemini-omni-mcp --version
 ```
 
@@ -216,19 +237,18 @@ OMNI_HARD_STOP_LIMIT_USD = "50.0"
 
 ## Real-Time USD Spend Tracker & Hard-Stop Kill-Switch
 
-Running parallel swarms or generating 1080p/4K video clips without guardrails can burn API credits fast. `gemini-omni-mcp` tracks token, image, video, audio, and cache usage on every call into `<workspace>/.gemini-omni/usage_ledger.json`:
+Every call's token, image, video, audio, and cache usage is recorded locally into `<workspace>/.gemini-omni/usage_ledger.json`:
 
 - **Default limit:** `$50.00 USD` (`OMNI_HARD_STOP_LIMIT_USD=50.0`)
-- **Automatic lock:** Once cumulative spend reaches the limit (or an estimated call would exceed it), `gemini-omni-mcp` marks the ledger locked, purges in-memory API keys, and raises `HardBudgetStopError` before any extra network call runs.
-- **Live control via tool:**
-  - Check spend & per-model breakdown: `gemini_cost_and_budget(action="summary")`
-  - Forecast a batch job first: `gemini_cost_and_budget(action="estimate_batch", model="gemini-3.8-flash", num_items=100, ...)`
-  - Raise or unlock budget: `gemini_cost_and_budget(action="set_budget_limit", new_budget_limit_usd=100.0)`
-  - Disable hard stop: set `OMNI_HARD_STOP_LIMIT_USD=0` or pass `--budget-limit 0`
+- **Automatic lock:** Reaching the cap locks the ledger, purges in-memory API keys, and raises `HardBudgetStopError` before additional calls execute.
+- **FinOps controls:**
+  - `gemini_cost_and_budget(action="summary")`
+  - `gemini_cost_and_budget(action="estimate_batch", model="gemini-4-hydrogen", num_items=100, ...)`
+  - `gemini_cost_and_budget(action="set_budget_limit", new_budget_limit_usd=100.0)` (pass `0` to disable)
 
 ---
 
-## Configuration Reference
+## Configuration & CLI Flags
 
 | Variable | Default | Description |
 | --- | --- | --- |
@@ -236,18 +256,13 @@ Running parallel swarms or generating 1080p/4K video clips without guardrails ca
 | `OMNI_HARD_STOP_LIMIT_USD` | `50.0` | Hard USD cap; set `0` to disable |
 | `GEMINI_OMNI_WORKSPACE` | Current working directory | Base directory for relative paths, cache bundles, and usage ledger |
 | `GEMINI_OMNI_LEDGER_PATH` | `<workspace>/.gemini-omni/usage_ledger.json` | Custom path for the USD spend ledger JSON |
-| `GEMINI_OMNI_ENABLE_3D_TOOLS` | `true` | Set `false` to disable the 3 optional 3D/CAD tools |
-| `GOOGLE_GENAI_USE_VERTEXAI` | `false` | Set `true` to route calls through Google Cloud Vertex AI |
+| `GEMINI_OMNI_ENABLE_3D_TOOLS` | `true` | Set `false` to run lean 13-tool mode |
+| `GOOGLE_GENAI_USE_VERTEXAI` | `false` | Route calls through Google Cloud Vertex AI |
 | `GOOGLE_CLOUD_PROJECT` | — | GCP Project ID for Vertex AI mode |
 | `GOOGLE_CLOUD_LOCATION` | `us-central1` | GCP Region for Vertex AI mode |
-| `BLENDER_PATH` | Auto-detected | Path to Blender executable for `argon_judge_and_autopatch` |
-
----
-
-## CLI Flags
+| `BLENDER_PATH` | Auto-detected | Blender executable path for `gemini_3d_judge_and_autopatch` |
 
 ```bash
-gemini-omni-mcp --help
 gemini-omni-mcp --list-tools
 gemini-omni-mcp --no-3d-tools --list-tools
 gemini-omni-mcp --workspace /path/to/project --budget-limit 25.0

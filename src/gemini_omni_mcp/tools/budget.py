@@ -20,9 +20,12 @@ from gemini_omni_mcp.pricing import (
 )
 
 SUPPORTED_MODELS = (
+    "gemini-4-carbon",
+    "gemini-4-neon",
+    "gemini-4-hydrogen",
     "gemini-4-argon",
-    "gemini-3.8-flash",
-    "gemini-3.6-flash",
+    "gemini-3.5-flash-lite",
+    "gemini-decision-1",
     "gemini-nano-banana-2.1",
     "gemini-3.1-flash-image",
     "gemini-3.1-flash-lite-image",
@@ -31,14 +34,16 @@ SUPPORTED_MODELS = (
     "gemini-omni-1.1-flash",
     "gemini-3.8-flash-tts",
     "gemini-3.8-flash-lite-tts",
+    "gemini-3.5-transcribe",
+    "gemini-3.5-transcribe-live",
     "gemini-3.8-live",
     "gemini-3.8-live-extended-thinking",
     "gemini-embedding-2",
     "lyria-3.5",
     "lyria-3-clip-preview",
-    "imagen-3.0-generate-002",
+    "gemini-3.8-flash",
+    "gemini-3.6-flash",
     "gemini-3.1-pro-preview",
-    "gemini-3.5-flash-lite",
 )
 
 
@@ -51,7 +56,7 @@ async def gemini_cost_and_budget(
         "set_budget_limit",
         "reset_ledger",
     ] = "summary",
-    model: str = "gemini-3.8-flash",
+    model: str = "gemini-4-hydrogen",
     tier: Literal["standard", "batch", "flex", "priority", "contributor"] = "standard",
     input_tokens: int = 0,
     cached_tokens: int = 0,
@@ -79,7 +84,7 @@ async def gemini_cost_and_budget(
 
     Actions:
       - `summary`: Return cumulative session spend, breakdowns (`by_model`, `by_tool`), and recent entries.
-      - `pricing_table`: Return standard and batch rates across all 19 supported models.
+      - `pricing_table`: Return standard and batch rates across all active Gemini 4, Decisions, Media, and 3.x models.
       - `calculate_call`: Compute exact USD cost for a single API call (optionally recording to ledger).
       - `estimate_batch`: Compare Standard vs Batch/Flex costs for `num_items` workloads.
       - `set_budget_limit`: Update `hard_stop_limit_usd` (`0` disables hard stop; raising above current spend unlocks).

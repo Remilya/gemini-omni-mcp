@@ -1,4 +1,4 @@
-"""Image synthesis, multi-reference fusion, conversational editing, and Imagen 3 tools."""
+"""Nano Banana 2.1 multi-reference image synthesis, editing, inpaint/outpaint, and upscaling."""
 
 from __future__ import annotations
 
@@ -12,7 +12,6 @@ from PIL import Image
 from gemini_omni_mcp.client import generate_content_with_retry, get_client
 from gemini_omni_mcp.config import logger, resolve_path
 from gemini_omni_mcp.media import extract_image_bytes, load_media_part
-from gemini_omni_mcp.pricing import record_api_usage
 
 
 async def gemini_image_fusion(
@@ -35,8 +34,10 @@ async def gemini_image_fusion(
 ) -> dict[str, Any]:
     """Multi-reference image synthesis and fusion (up to 14 reference images + optional style anchor).
 
-    Supports presets (`freeform`, `character_sheet`, `architectural_sheet`, `story_scene`,
-    `pixel_sprite`) and official `ImageConfig` (`aspect_ratio` and `image_size`: `0.5K`, `1K`, `2K`, `4K`).
+    Defaults to `gemini-nano-banana-2.1` (also supports `gemini-3.1-flash-image`,
+    `gemini-3.1-flash-lite-image`, and `gemini-3-pro-image`). Supports presets (`freeform`,
+    `character_sheet`, `architectural_sheet`, `story_scene`, `pixel_sprite`) and official
+    `ImageConfig` (`aspect_ratio` and `image_size`: `0.5K`, `1K`, `2K`, `4K`).
     """
     contents: list[types.Part] = []
 
@@ -164,215 +165,121 @@ async def gemini_image_edit(
     source_image_path: str,
     edit_instruction: str,
     output_path: str,
+    action: Literal["edit", "inpaint", "outpaint", "upscale"] = "edit",
+    mask_image_path: Optional[str] = None,
+    upscale_factor: Literal["x2", "x4"] = "x4",
     extra_ref_paths: list[str] = [],
+    aspect_ratio: Optional[str] = None,
+    image_size: Optional[str] = None,
     model: str = "gemini-nano-banana-2.1",
 ) -> dict[str, Any]:
-    """Conversational and regional image editing without regenerating from scratch.
+    """Conversational image editing, masked inpainting/outpainting, and high-res upscaling.
 
-    Applies targeted changes to `source_image_path` (with up to 6 optional `extra_ref_paths`)
-    while keeping unmentioned areas, lighting, and proportions intact.
+    Powered by `gemini-nano-banana-2.1` (replacing legacy shut-down Imagen models), with
+    deterministic Pillow Lanczos fallback for `action="upscale"`.
     """
-    contents: list[types.Part] = [load_media_part(source_image_path, max_dim=2048)]
+    src_path = resolve_path(source_image_path)
+    out_file = resolve_path(output_path)
+    out_file.parent.mkdir(parents=True, exist_ok=True)
+
+    client = get_client(context=f"gemini_image_edit:{action}")
+
+    contents: list[types.Part] = [load_media_part(str(src_path), max_dim=2048)]
+    if mask_image_path:
+        contents.append(load_media_part(mask_image_path, max_dim=2048))
     for rp in extra_ref_paths[:6]:
         contents.append(load_media_part(rp, max_dim=1536))
 
-    prompt = (
-        "Perform a precise localized image edit on the first attached source image.\n"
-        "Preserve the existing layout, proportions, background, and unmentioned regions intact.\n"
-        f"Edit Instruction: {edit_instruction}"
-    )
-    contents.append(types.Part.from_text(text=prompt))
-
-    client = get_client(context="gemini_image_edit")
-    config = types.GenerateContentConfig(response_modalities=["IMAGE", "TEXT"])
-
-    response = await asyncio.to_thread(
-        generate_content_with_retry,
-        client,
-        model,
-        contents,
-        config,
-        False,
-        "gemini_image_edit",
-    )
-    img_bytes = extract_image_bytes(response)
-    if not img_bytes:
-        raise RuntimeError(
-            f"gemini_image_edit did not receive edited image bytes from '{model}'. "
-            f"Response text: {getattr(response, 'text', '')}"
+    if action == "inpaint":
+        prompt = (
+            "Perform targeted inpainting on Image #1"
+            + (" strictly inside the masked region shown in Image #2." if mask_image_path else ".")
+            + "\nKeep all unmasked pixels, proportions, and lighting consistent.\n"
+            f"Inpaint Instruction: {edit_instruction}"
+        )
+    elif action == "outpaint":
+        prompt = (
+            "Seamlessly outpaint and extend the canvas of Image #1"
+            + (" guided by the layout/mask in Image #2." if mask_image_path else ".")
+            + "\nPreserve the original subject, perspective, lighting, and textures seamlessly.\n"
+            f"Outpaint Instruction: {edit_instruction}"
+        )
+    elif action == "upscale":
+        prompt = (
+            f"Enhance and upscale Image #1 to crisp high-definition ({upscale_factor} detail) "
+            "while preserving 100% of the exact composition, colors, and identity.\n"
+            f"Detail Notes: {edit_instruction or 'Sharpen fine textures and remove compression artifacts.'}"
+        )
+    else:
+        prompt = (
+            "Perform a precise localized image edit on the first attached source image.\n"
+            "Preserve the existing layout, proportions, background, and unmentioned regions intact.\n"
+            f"Edit Instruction: {edit_instruction}"
         )
 
-    out_file = resolve_path(output_path)
-    out_file.parent.mkdir(parents=True, exist_ok=True)
-    out_file.write_bytes(img_bytes)
+    contents.append(types.Part.from_text(text=prompt))
 
+    eff_size = image_size
+    if action == "upscale" and not eff_size:
+        eff_size = "4K" if upscale_factor == "x4" else "2K"
+
+    img_cfg_kwargs: dict[str, Any] = {}
+    if aspect_ratio:
+        img_cfg_kwargs["aspect_ratio"] = aspect_ratio
+    if eff_size:
+        img_cfg_kwargs["image_size"] = eff_size.upper()
+    image_cfg = types.ImageConfig(**img_cfg_kwargs) if img_cfg_kwargs else None
+
+    config = types.GenerateContentConfig(
+        response_modalities=["IMAGE", "TEXT"],
+        image_config=image_cfg,
+    )
+
+    img_bytes: Optional[bytes] = None
+    used_model = model
+    try:
+        response = await asyncio.to_thread(
+            generate_content_with_retry,
+            client,
+            model,
+            contents,
+            config,
+            False,
+            "gemini_image_edit",
+        )
+        img_bytes = extract_image_bytes(response)
+    except Exception as exc:
+        if action != "upscale":
+            raise
+        logger.info("AI upscale fallback to Pillow Lanczos (%s)", exc)
+
+    if not img_bytes and action == "upscale":
+        with Image.open(src_path) as im:
+            scale = 4 if upscale_factor == "x4" else 2
+            up_im = im.resize((im.width * scale, im.height * scale), Image.Resampling.LANCZOS)
+            buf = io.BytesIO()
+            up_im.save(buf, format="PNG")
+            img_bytes = buf.getvalue()
+        used_model = f"{model} (lanczos-fallback)"
+
+    if not img_bytes:
+        raise RuntimeError(
+            f"gemini_image_edit ({action}) did not receive image bytes from '{model}'."
+        )
+
+    out_file.write_bytes(img_bytes)
     return {
         "status": "success",
-        "model": model,
-        "source_image_path": str(resolve_path(source_image_path)),
+        "action": action,
+        "model": used_model,
+        "source_image_path": str(src_path),
         "output_path": str(out_file),
         "edit_instruction": edit_instruction,
         "bytes_written": len(img_bytes),
     }
 
 
-async def imagen_studio(
-    action: Literal["generate", "inpaint", "outpaint", "upscale"],
-    prompt: str,
-    output_path: str,
-    source_image_path: Optional[str] = None,
-    mask_image_path: Optional[str] = None,
-    upscale_factor: str = "x4",
-) -> dict[str, Any]:
-    """Imagen 3 generation, masked inpaint/outpaint, and 2x/4x upscaling with Gemini fallback."""
-    client = get_client(context=f"imagen_studio:{action}")
-    out_file = resolve_path(output_path)
-    out_file.parent.mkdir(parents=True, exist_ok=True)
-    model_used = ""
-    img_bytes: Optional[bytes] = None
-
-    if action == "generate":
-        model_used = "imagen-3.0-generate-002"
-        try:
-            resp = await asyncio.to_thread(
-                client.models.generate_images,
-                model=model_used,
-                prompt=prompt,
-                config=types.GenerateImagesConfig(number_of_images=1),
-            )
-            img_bytes = extract_image_bytes(resp)
-            record_api_usage(
-                tool_name="imagen_studio",
-                model=model_used,
-                images_generated=1,
-                note=f"generate -> {out_file.name}",
-            )
-        except Exception as exc:
-            logger.info("Imagen generate fallback to gemini-3-pro-image (%s)", exc)
-            model_used = "gemini-3-pro-image"
-            resp = await asyncio.to_thread(
-                generate_content_with_retry,
-                client,
-                model_used,
-                [types.Part.from_text(text=prompt)],
-                types.GenerateContentConfig(response_modalities=["IMAGE", "TEXT"]),
-                False,
-                "imagen_studio",
-            )
-            img_bytes = extract_image_bytes(resp)
-
-    elif action in ("inpaint", "outpaint"):
-        if not source_image_path:
-            raise ValueError(f"source_image_path is required for action='{action}'.")
-        model_used = "imagen-3.0-capability-001"
-        src_path = resolve_path(source_image_path)
-        try:
-            raw_ref = types.RawReferenceImage(
-                reference_id=1,
-                reference_image=types.Image.from_file(location=str(src_path)),
-            )
-            ref_images: list[Any] = [raw_ref]
-            if mask_image_path:
-                m_path = resolve_path(mask_image_path)
-                edit_mode = (
-                    types.EditMode.EDIT_MODE_INPAINT_INSERTION
-                    if action == "inpaint"
-                    else types.EditMode.EDIT_MODE_OUTPAINT
-                )
-                mask_ref = types.MaskReferenceImage(
-                    reference_id=2,
-                    reference_image=types.Image.from_file(location=str(m_path)),
-                    config=types.MaskReferenceConfig(
-                        mask_mode=types.MaskReferenceMode.MASK_MODE_USER_PROVIDED
-                    ),
-                )
-                ref_images.append(mask_ref)
-            else:
-                edit_mode = types.EditMode.EDIT_MODE_DEFAULT
-
-            resp = await asyncio.to_thread(
-                client.models.edit_image,
-                model=model_used,
-                prompt=prompt,
-                reference_images=ref_images,
-                config=types.EditImageConfig(edit_mode=edit_mode, number_of_images=1),
-            )
-            img_bytes = extract_image_bytes(resp)
-            record_api_usage(
-                tool_name="imagen_studio",
-                model=model_used,
-                images_generated=1,
-                note=f"{action} -> {out_file.name}",
-            )
-        except Exception as exc:
-            logger.info("Imagen edit_image fallback to gemini-nano-banana-2.1 (%s)", exc)
-            model_used = "gemini-nano-banana-2.1"
-            parts = [load_media_part(str(src_path), max_dim=2048)]
-            if mask_image_path:
-                parts.append(load_media_part(mask_image_path, max_dim=2048))
-            parts.append(
-                types.Part.from_text(
-                    text=(
-                        f"Perform {action} on the source image "
-                        f"(using the second image as mask if provided): {prompt}"
-                    )
-                )
-            )
-            resp = await asyncio.to_thread(
-                generate_content_with_retry,
-                client,
-                model_used,
-                parts,
-                types.GenerateContentConfig(response_modalities=["IMAGE", "TEXT"]),
-                False,
-                "imagen_studio",
-            )
-            img_bytes = extract_image_bytes(resp)
-
-    elif action == "upscale":
-        if not source_image_path:
-            raise ValueError("source_image_path is required for action='upscale'.")
-        model_used = "imagen-3.0-upscale-001"
-        src_path = resolve_path(source_image_path)
-        try:
-            resp = await asyncio.to_thread(
-                client.models.upscale_image,
-                model=model_used,
-                image=types.Image.from_file(location=str(src_path)),
-                upscale_factor=upscale_factor,
-            )
-            img_bytes = extract_image_bytes(resp)
-            record_api_usage(
-                tool_name="imagen_studio",
-                model=model_used,
-                images_generated=1,
-                note=f"upscale {upscale_factor} -> {out_file.name}",
-            )
-        except Exception as exc:
-            logger.info("Imagen upscale_image fallback to Pillow Lanczos (%s)", exc)
-            with Image.open(src_path) as im:
-                scale = 4 if "4" in upscale_factor else 2
-                up_im = im.resize((im.width * scale, im.height * scale), Image.Resampling.LANCZOS)
-                buf = io.BytesIO()
-                up_im.save(buf, format="PNG")
-                img_bytes = buf.getvalue()
-            model_used = "imagen-3.0-upscale-001 (lanczos-fallback)"
-
-    if not img_bytes:
-        raise RuntimeError(f"imagen_studio ({action}) returned no image bytes.")
-
-    out_file.write_bytes(img_bytes)
-    return {
-        "status": "success",
-        "action": action,
-        "model": model_used,
-        "output_path": str(out_file),
-        "bytes_written": len(img_bytes),
-    }
-
-
 def register(mcp: Any) -> None:
-    """Register image tools on the MCP server instance."""
+    """Register Nano Banana image generation and editing tools on the MCP server instance."""
     mcp.tool()(gemini_image_fusion)
     mcp.tool()(gemini_image_edit)
-    mcp.tool()(imagen_studio)

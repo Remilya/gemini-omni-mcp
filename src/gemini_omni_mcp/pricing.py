@@ -14,7 +14,7 @@ from gemini_omni_mcp.config import (
 )
 
 DEFAULT_HARD_STOP_LIMIT_USD = 50.0
-PRICING_VERSION = "2026-11-06 (Official Google Gemini Developer API Pricing)"
+PRICING_VERSION = "2026-11-23 (Official Google Gemini Developer API Pricing)"
 PRICING_SOURCE_URL = "https://ai.google.dev/gemini-api/docs/pricing"
 
 
@@ -30,7 +30,7 @@ def get_pricing_rates(
     """Return per-1M-token (or per-unit) USD rates for the specified model and tier.
 
     Applies date-based promotional pricing windows:
-      - `gemini-4-argon`: promotional rates through 2026-11-30 UTC.
+      - `gemini-4-carbon` / `gemini-4-argon`: promotional rates through 2026-11-30 UTC.
       - `gemini-3.8-flash` / `gemini-3.6-flash` / `gemini-3.8-flash-tts` / `gemini-3.8-flash-lite-tts`:
         promotional rates through 2026-12-31 UTC.
     """
@@ -40,7 +40,7 @@ def get_pricing_rates(
     else:
         now_utc = now_utc.astimezone(timezone.utc)
 
-    is_argon_promo = (now_utc.year, now_utc.month, now_utc.day) <= (2026, 11, 30)
+    is_g4_promo = (now_utc.year, now_utc.month, now_utc.day) <= (2026, 11, 30)
     is_flash38_promo = (now_utc.year, now_utc.month, now_utc.day) <= (2026, 12, 31)
 
     m = model.strip().lower()
@@ -54,19 +54,69 @@ def get_pricing_rates(
         "priority": 1.8,
     }.get(t, 1.0)
 
-    if "gemini-4-argon" in m:
-        base_in = 2.00 if is_argon_promo else 4.00
-        base_out = 10.00 if is_argon_promo else 20.00
-        base_cache = 0.10 if is_argon_promo else 0.20
+    if "gemini-4-carbon" in m or "gemini-4-argon" in m:
+        base_in = 2.00 if is_g4_promo else 4.00
+        base_out = 10.00 if is_g4_promo else 20.00
+        base_cache = 0.10 if is_g4_promo else 0.20
+        canonical = "gemini-4-carbon" if "carbon" in m else "gemini-4-argon"
         return {
-            "model": "gemini-4-argon",
+            "model": canonical,
             "tier": t,
-            "promo_active": is_argon_promo,
+            "promo_active": is_g4_promo,
             "promo_until": "2026-11-30",
             "input_per_1m": round(base_in * tier_mult, 4),
             "output_per_1m": round(base_out * tier_mult, 4),
             "cache_per_1m": round(base_cache * tier_mult, 4),
             "cache_storage_per_1m_hr": 0.0,
+        }
+
+    if "gemini-4-neon" in m:
+        return {
+            "model": "gemini-4-neon",
+            "tier": t,
+            "input_per_1m": round(3.00 * tier_mult, 4),
+            "output_per_1m": round(15.00 * tier_mult, 4),
+            "cache_per_1m": round(0.15 * tier_mult, 4),
+            "cache_storage_per_1m_hr": 0.0,
+        }
+
+    if "gemini-4-hydrogen" in m:
+        return {
+            "model": "gemini-4-hydrogen",
+            "tier": t,
+            "input_per_1m": round(1.50 * tier_mult, 4),
+            "output_per_1m": round(7.50 * tier_mult, 4),
+            "cache_per_1m": round(0.075 * tier_mult, 4),
+            "cache_storage_per_1m_hr": 0.0,
+        }
+
+    if "gemini-decision" in m:
+        return {
+            "model": "gemini-decision-1",
+            "tier": "standard",
+            "batch_supported": False,
+            "input_per_1m": 0.10,
+            "output_per_1m": 0.0,
+        }
+
+    if "gemini-3.5-transcribe-live" in m:
+        return {
+            "model": "gemini-3.5-transcribe-live",
+            "tier": "standard",
+            "input_per_1m": 3.50,
+            "output_per_1m": 21.00,
+            "audio_tokens_per_sec": 25,
+            "blended_usd_per_min": 0.009,
+        }
+
+    if "gemini-3.5-transcribe" in m:
+        return {
+            "model": "gemini-3.5-transcribe",
+            "tier": "standard",
+            "input_per_1m": 2.00,
+            "output_per_1m": 12.00,
+            "audio_tokens_per_sec": 25,
+            "blended_usd_per_min": 0.005,
         }
 
     if "gemini-3.8-flash-lite-tts" in m:
@@ -233,6 +283,9 @@ def get_pricing_rates(
             "model": "gemini-embedding-2",
             "tier": t,
             "input_per_1m": round(0.20 * m_mult, 4),
+            "image_input_per_1m": round(0.45 * m_mult, 4),
+            "audio_input_per_1m": round(6.50 * m_mult, 4),
+            "video_input_per_1m": round(12.00 * m_mult, 4),
             "output_per_1m": 0.0,
         }
 
@@ -244,7 +297,7 @@ def get_pricing_rates(
 
     if "imagen" in m:
         per_img = 0.02 if "fast" in m else (0.06 if "ultra" in m else 0.04)
-        return {"model": m, "tier": "standard", "per_image_usd": per_img}
+        return {"model": m, "tier": "standard", "deprecated": True, "per_image_usd": per_img}
 
     if "gemini-3.1-pro" in m:
         return {
@@ -274,11 +327,12 @@ def get_pricing_rates(
             "cache_per_1m": round(0.025 * tier_mult, 4),
         }
 
+    # Default fallback to Gemini 4 Hydrogen rates
     return {
         "model": model,
         "tier": t,
-        "input_per_1m": round(0.75 * tier_mult, 4),
-        "output_per_1m": round(3.75 * tier_mult, 4),
+        "input_per_1m": round(1.50 * tier_mult, 4),
+        "output_per_1m": round(7.50 * tier_mult, 4),
         "cache_per_1m": round(0.075 * tier_mult, 4),
     }
 
@@ -301,7 +355,17 @@ def calculate_call_cost(
 ) -> dict[str, Any]:
     """Calculate exact USD cost and itemized breakdown for a Gemini API call."""
     rates = get_pricing_rates(model, tier, as_of=as_of)
-    uncached_in = max(0, int(input_tokens) - int(cached_tokens))
+    resolved_model = str(rates.get("model", model))
+    effective_in_tokens = int(input_tokens)
+    if (
+        "transcribe" in resolved_model
+        and audio_seconds > 0
+        and effective_in_tokens == 0
+        and "audio_tokens_per_sec" in rates
+    ):
+        effective_in_tokens = int(round(audio_seconds * int(rates["audio_tokens_per_sec"])))
+
+    uncached_in = max(0, effective_in_tokens - int(cached_tokens))
     cached_in = max(0, int(cached_tokens))
 
     in_rate = float(rates.get("input_per_1m", 0.0))
@@ -346,7 +410,12 @@ def calculate_call_cost(
     audio_cost = 0.0
     if songs_generated > 0 and "per_song_usd" in rates:
         audio_cost += songs_generated * float(rates["per_song_usd"])
-    elif audio_seconds > 0 and "audio_tokens_per_sec" in rates and effective_text_out_tokens == 0:
+    elif (
+        "transcribe" not in resolved_model
+        and audio_seconds > 0
+        and "audio_tokens_per_sec" in rates
+        and effective_text_out_tokens == 0
+    ):
         atok = int(round(audio_seconds * int(rates["audio_tokens_per_sec"])))
         audio_cost += (atok / 1_000_000.0) * out_rate
 
@@ -361,10 +430,10 @@ def calculate_call_cost(
     )
 
     return {
-        "model": rates.get("model", model),
-        "tier": tier,
+        "model": resolved_model,
+        "tier": str(rates.get("tier", tier)),
         "promo_active": rates.get("promo_active", False),
-        "input_tokens": int(input_tokens),
+        "input_tokens": effective_in_tokens,
         "uncached_input_tokens": uncached_in,
         "cached_tokens": cached_in,
         "output_tokens": int(output_tokens),

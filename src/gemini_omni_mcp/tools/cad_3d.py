@@ -27,7 +27,7 @@ from gemini_omni_mcp.schemas import (
     RLAIF3DCriticResponse,
 )
 
-HARD_MAX_ARGON_RETRIES = 5
+HARD_MAX_JUDGE_RETRIES = 5
 
 
 async def vision_extract_3d_spec(
@@ -37,10 +37,11 @@ async def vision_extract_3d_spec(
         "character", "prop", "architecture", "environment", "vehicle", "other"
     ] = "prop",
     triangle_budget_limit: int = 10000,
+    model: str = "gemini-4-hydrogen",
 ) -> dict[str, Any]:
     """Extract a structured PBR `#RRGGBB` palette and 3D proportion spec from reference images.
 
-    Combines deterministic PIL pixel median sampling with `gemini-3.8-flash` vision reasoning.
+    Combines deterministic PIL pixel median sampling with Gemini 4 Hydrogen vision reasoning.
     """
     if not image_paths:
         raise ValueError("image_paths cannot be empty.")
@@ -97,7 +98,7 @@ async def vision_extract_3d_spec(
     response = await asyncio.to_thread(
         generate_content_with_retry,
         client,
-        "gemini-3.8-flash",
+        model,
         parts,
         config,
         False,
@@ -111,8 +112,9 @@ async def vision_rlaif_3d_critic(
     render_image_path: str,
     reference_image_paths: list[str],
     spec_rules: str,
+    model: str = "gemini-4-hydrogen",
 ) -> dict[str, Any]:
-    """Inspect a multi-angle 3D render against reference images using Gemini 3.8 Flash.
+    """Inspect a multi-angle 3D render against reference images using Gemini 4 Hydrogen.
 
     Returns structured per-angle scores, visual bug list, and concrete coordinate/mesh fixes.
     """
@@ -142,7 +144,7 @@ async def vision_rlaif_3d_critic(
     response = await asyncio.to_thread(
         generate_content_with_retry,
         client,
-        "gemini-3.8-flash",
+        model,
         parts,
         config,
         False,
@@ -152,7 +154,7 @@ async def vision_rlaif_3d_critic(
     return critic.model_dump()
 
 
-async def argon_judge_and_autopatch(
+async def gemini_3d_judge_and_autopatch(
     subject_id: str,
     render_image_path: str,
     reference_image_paths: list[str],
@@ -160,14 +162,17 @@ async def argon_judge_and_autopatch(
     render_command: Optional[str] = None,
     cached_content_name: Optional[str] = None,
     auto_rewrite_script_if_failed: bool = True,
-    max_argon_iterations: int = 3,
+    max_judge_iterations: int = 3,
     reset_retry_counter: bool = False,
+    model: str = "gemini-4-carbon",
+    patch_model: str = "gemini-4-hydrogen",
+    thinking_level: Literal["low", "medium", "high", "xhigh"] = "medium",
 ) -> dict[str, Any]:
-    """Supreme visual + code judge (`gemini-4-argon`) and autonomous 3D script autopatcher.
+    """Supreme visual + code judge (`gemini-4-carbon` / `gemini-4-neon`) & 3D script autopatcher.
 
-    Audits the rendered views and 3D generator script, synthesizes targeted code fixes if
-    `score < 95`, validates Python syntax (`ast.parse`) before writing, executes headless
-    Blender (or custom `render_command`), and enforces a hard circuit breaker of 5 attempts.
+    Audits rendered views and the 3D generator script, synthesizes targeted patches with
+    `patch_model` if `score < 95`, validates Python syntax (`ast.parse`) before writing,
+    executes headless Blender (or custom `render_command`), and stops after 5 cumulative retries.
     """
     script_file = resolve_path(cad_script_path)
     render_file = resolve_path(render_image_path)
@@ -176,33 +181,40 @@ async def argon_judge_and_autopatch(
     if not render_file.is_file():
         raise FileNotFoundError(f"Render image not found: {render_file}")
 
-    clamped_max_iters = max(1, min(int(max_argon_iterations), HARD_MAX_ARGON_RETRIES))
-    verdict_file = render_file.parent / "argon_verdict.json"
+    clamped_max_iters = max(1, min(int(max_judge_iterations), HARD_MAX_JUDGE_RETRIES))
+    verdict_file = render_file.parent / "judge_verdict.json"
+    legacy_verdict_file = render_file.parent / "argon_verdict.json"
+    read_verdict_file = (
+        verdict_file
+        if verdict_file.is_file()
+        else (legacy_verdict_file if legacy_verdict_file.is_file() else None)
+    )
+
     cumulative_attempts = 0
     prior_history: list[dict[str, Any]] = []
 
-    if verdict_file.is_file() and not reset_retry_counter:
+    if read_verdict_file is not None and not reset_retry_counter:
         try:
-            prev_data = json.loads(verdict_file.read_text(encoding="utf-8"))
+            prev_data = json.loads(read_verdict_file.read_text(encoding="utf-8"))
             cumulative_attempts = int(
                 prev_data.get("cumulative_attempts", prev_data.get("iterations_run", 0))
             )
             prior_history = list(prev_data.get("history", []))
-            if cumulative_attempts >= HARD_MAX_ARGON_RETRIES and not prev_data.get("passed", False):
+            if cumulative_attempts >= HARD_MAX_JUDGE_RETRIES and not prev_data.get("passed", False):
                 prev_data["retry_limit_reached"] = True
-                prev_data["max_retries_limit"] = HARD_MAX_ARGON_RETRIES
+                prev_data["max_retries_limit"] = HARD_MAX_JUDGE_RETRIES
                 prev_data["circuit_breaker_message"] = (
-                    f"Hard Argon retry limit ({HARD_MAX_ARGON_RETRIES}/{HARD_MAX_ARGON_RETRIES}) reached for '{subject_id}'. "
+                    f"Hard judge retry limit ({HARD_MAX_JUDGE_RETRIES}/{HARD_MAX_JUDGE_RETRIES}) reached for '{subject_id}'. "
                     "Loop halted to prevent infinite retries. Inspect manually or pass reset_retry_counter=True."
                 )
                 return prev_data
         except Exception as exc:
-            logger.warning("Could not read prior argon_verdict.json at %s: %s", verdict_file, exc)
+            logger.warning("Could not read prior verdict at %s: %s", read_verdict_file, exc)
 
-    remaining_budget = max(1, HARD_MAX_ARGON_RETRIES - cumulative_attempts)
+    remaining_budget = max(1, HARD_MAX_JUDGE_RETRIES - cumulative_attempts)
     effective_iters = min(clamped_max_iters, remaining_budget)
 
-    client = get_client(context=f"argon_judge_and_autopatch:{subject_id}")
+    client = get_client(context=f"gemini_3d_judge_and_autopatch:{subject_id}")
     workspace = get_workspace_root()
     history_log: list[dict[str, Any]] = list(prior_history)
     retry_limit_reached = False
@@ -241,8 +253,8 @@ async def argon_judge_and_autopatch(
             pass
 
         prompt = (
-            f"You are `gemini-4-argon`, the Supreme 3D CAD & RLAIF Judge for asset `{subject_id}` "
-            f"(Attempt {cumulative_attempts}/{HARD_MAX_ARGON_RETRIES}).\n"
+            f"You are `{model}`, the Supreme 3D CAD & RLAIF Judge for asset `{subject_id}` "
+            f"(Attempt {cumulative_attempts}/{HARD_MAX_JUDGE_RETRIES}).\n"
             "Attached Media:\n"
             f"- Image #1: Current 3D render (`{render_file.name}`). Pre-computed quadrant foreground coverage: {json.dumps(quad_stats)}\n"
             "- Remaining Images: Reference Sheet(s) / Blueprints.\n\n"
@@ -258,7 +270,7 @@ async def argon_judge_and_autopatch(
         parts.append(types.Part.from_text(text=prompt))
 
         cfg_kwargs: dict[str, Any] = {
-            "thinking_config": types.ThinkingConfig(thinking_level="LOW"),
+            "thinking_config": types.ThinkingConfig(thinking_level=thinking_level.upper()),
             "response_mime_type": "application/json",
             "response_schema": ArgonJudgeEvaluation,
             "max_output_tokens": 4096,
@@ -269,14 +281,14 @@ async def argon_judge_and_autopatch(
 
         config = types.GenerateContentConfig(**cfg_kwargs)
         response = await client.aio.models.generate_content(
-            model="gemini-4-argon",
+            model=model,
             contents=parts,
             config=config,
         )
         await asyncio.to_thread(
             record_api_usage,
-            "argon_judge_and_autopatch",
-            "gemini-4-argon",
+            "gemini_3d_judge_and_autopatch",
+            model,
             "standard",
             response,
         )
@@ -299,10 +311,10 @@ async def argon_judge_and_autopatch(
             history_log.append(iter_entry)
             break
 
-        if cumulative_attempts >= HARD_MAX_ARGON_RETRIES:
+        if cumulative_attempts >= HARD_MAX_JUDGE_RETRIES:
             retry_limit_reached = True
             circuit_breaker_message = (
-                f"Hard Argon retry limit ({HARD_MAX_ARGON_RETRIES}/{HARD_MAX_ARGON_RETRIES}) reached for '{subject_id}'. "
+                f"Hard judge retry limit ({HARD_MAX_JUDGE_RETRIES}/{HARD_MAX_JUDGE_RETRIES}) reached for '{subject_id}'. "
                 "Stopping further autopatches to prevent an infinite loop."
             )
             history_log.append(iter_entry)
@@ -314,7 +326,7 @@ async def argon_judge_and_autopatch(
                 bugs_str = "\n".join(f"- {b}" for b in (verdict.visual_bugs or []))
                 patch_prompt = (
                     f"Fix all 3D geometry, proportion, material, and placement bugs in `{script_file.name}` for `{subject_id}` "
-                    f"identified by Supreme Judge `gemini-4-argon` (score={verdict.score}/100):\n\n"
+                    f"identified by Supreme Judge `{model}` (score={verdict.score}/100):\n\n"
                     f"Rear/Back Critique:\n{verdict.rear_view_verdict}\n\n"
                     f"Geometry & Topology Audit:\n{verdict.geometry_and_topology_audit}\n\n"
                     f"Exact Visual Bugs to Fix:\n{bugs_str}\n\n"
@@ -329,7 +341,7 @@ async def argon_judge_and_autopatch(
                 patch_parts.append(types.Part.from_text(text=patch_prompt))
 
                 patch_resp = await client.aio.models.generate_content(
-                    model="gemini-3.8-flash",
+                    model=patch_model,
                     contents=patch_parts,
                     config=types.GenerateContentConfig(
                         thinking_config=types.ThinkingConfig(thinking_level="LOW"),
@@ -339,8 +351,8 @@ async def argon_judge_and_autopatch(
                 )
                 await asyncio.to_thread(
                     record_api_usage,
-                    "argon_judge_autopatch_code",
-                    "gemini-3.8-flash",
+                    "gemini_3d_judge_autopatch_code",
+                    patch_model,
                     "standard",
                     patch_resp,
                 )
@@ -407,15 +419,16 @@ async def argon_judge_and_autopatch(
 
     final_entry = history_log[-1]
     result_payload: dict[str, Any] = {
-        "model": "gemini-4-argon",
+        "model": model,
+        "patch_model": patch_model,
         "subject_id": subject_id,
         "final_score": final_entry["score"],
         "passed": final_entry["passed"],
         "iterations_run": len(history_log),
         "cumulative_attempts": cumulative_attempts,
-        "max_retries_limit": HARD_MAX_ARGON_RETRIES,
+        "max_retries_limit": HARD_MAX_JUDGE_RETRIES,
         "retry_limit_reached": retry_limit_reached
-        or (cumulative_attempts >= HARD_MAX_ARGON_RETRIES and not final_entry["passed"]),
+        or (cumulative_attempts >= HARD_MAX_JUDGE_RETRIES and not final_entry["passed"]),
         "circuit_breaker_message": circuit_breaker_message,
         "cad_script_path": str(script_file),
         "render_image_path": str(render_file),
@@ -426,7 +439,7 @@ async def argon_judge_and_autopatch(
             json.dumps(result_payload, indent=2, ensure_ascii=False), encoding="utf-8"
         )
     except Exception as exc:
-        logger.warning("Failed to persist argon_verdict.json at %s: %s", verdict_file, exc)
+        logger.warning("Failed to persist judge_verdict.json at %s: %s", verdict_file, exc)
     return result_payload
 
 
@@ -434,4 +447,4 @@ def register(mcp: Any) -> None:
     """Register optional 3D/CAD vision and autopatching tools on the MCP server instance."""
     mcp.tool()(vision_extract_3d_spec)
     mcp.tool()(vision_rlaif_3d_critic)
-    mcp.tool()(argon_judge_and_autopatch)
+    mcp.tool()(gemini_3d_judge_and_autopatch)

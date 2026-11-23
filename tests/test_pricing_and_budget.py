@@ -42,6 +42,57 @@ def test_promo_vs_regular_rates_by_date():
     assert flash_reg["promo_active"] is False
     assert flash_reg["input_per_1m"] == 1.50
 
+    carbon_promo = get_pricing_rates("gemini-4-carbon", "standard", as_of=promo_dt)
+    carbon_reg = get_pricing_rates("gemini-4-carbon", "standard", as_of=post_argon_dt)
+    assert carbon_promo["promo_active"] is True
+    assert carbon_promo["input_per_1m"] == 2.00
+    assert carbon_promo["output_per_1m"] == 10.00
+    assert carbon_reg["promo_active"] is False
+    assert carbon_reg["input_per_1m"] == 4.00
+    assert carbon_reg["output_per_1m"] == 20.00
+
+    neon = get_pricing_rates("gemini-4-neon", "standard")
+    assert neon["input_per_1m"] == 3.00
+    assert neon["output_per_1m"] == 15.00
+    assert neon["cache_per_1m"] == 0.15
+
+    hydrogen = get_pricing_rates("gemini-4-hydrogen", "standard")
+    assert hydrogen["input_per_1m"] == 1.50
+    assert hydrogen["output_per_1m"] == 7.50
+    assert hydrogen["cache_per_1m"] == 0.075
+
+    dec = get_pricing_rates("gemini-decision-1", "batch")
+    assert dec["batch_supported"] is False
+    assert dec["tier"] == "standard"
+    assert dec["input_per_1m"] == 0.10
+    assert dec["output_per_1m"] == 0.0
+
+    emb = get_pricing_rates("gemini-embedding-2", "standard")
+    assert emb["input_per_1m"] == 0.20
+    assert emb["image_input_per_1m"] == 0.45
+    assert emb["audio_input_per_1m"] == 6.50
+    assert emb["video_input_per_1m"] == 12.00
+
+
+def test_decisions_and_transcribe_cost_math():
+    dec_cost = calculate_call_cost(
+        model="gemini-decision-1",
+        input_tokens=500_000,
+        output_tokens=0,
+    )
+    assert dec_cost["cost_usd"] == pytest.approx(0.05, rel=1e-4)
+    assert dec_cost["breakdown_usd"]["text_and_thinking_output_usd"] == 0.0
+
+    # 60s of audio @ 25 tok/s = 1500 tokens * $2.00 / 1M = $0.003
+    tr_cost = calculate_call_cost(
+        model="gemini-3.5-transcribe",
+        audio_seconds=60.0,
+        output_tokens=175,
+    )
+    assert tr_cost["input_tokens"] == 1500
+    assert tr_cost["breakdown_usd"]["input_usd"] == pytest.approx(0.003, rel=1e-4)
+    assert tr_cost["breakdown_usd"]["text_and_thinking_output_usd"] == pytest.approx(0.0021, rel=1e-4)
+
 
 def test_tier_multipliers_and_media_cost_math():
     promo_dt = datetime(2026, 11, 20, tzinfo=timezone.utc)

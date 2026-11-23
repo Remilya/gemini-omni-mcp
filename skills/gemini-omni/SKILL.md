@@ -1,36 +1,42 @@
 ---
 name: gemini-omni
-description: Route multimodal image generation/editing, stateful Omni video studio, TTS/custom voices/Lyria music, 30-50x Flash async swarms, Context Caching, cost estimation/hard-stop budget checks, and optional 3D/CAD RLAIF verification through the gemini-omni MCP server.
+description: Route live Gemini API docs lookup, Gemini 4 (Carbon/Neon/Hydrogen) async swarms, zero-output-token Decisions API, Deep Research, multimodal embeddings, Nano Banana 2.1 image fusion/editing, Omni video studio, Transcribe/TTS/Voices/Lyria 3.5, budget guard, and optional 3D/CAD RLAIF tools through gemini-omni MCP.
 ---
 
-# Gemini Omni MCP Skill
+# Gemini Omni MCP Skill (v2.0.0)
 
-Use the `gemini-omni` MCP tools instead of launching a separate Gemini CLI session whenever an agent needs Google GenAI multimodal synthesis, high-concurrency batch processing, or cost-controlled Gemini 3.8 / Gemini 4 Argon execution.
+Use `gemini-omni` MCP tools directly inside your coding agent workflow instead of opening a separate CLI session whenever you need live Gemini API docs, Gemini 4 swarms, structured Decisions, multimodal media generation, or strict USD budget enforcement.
 
-## Tool Selection Guide
+## Docs-First Rule (Zero Cost)
 
-| Need | Tool | Key Notes |
-| --- | --- | --- |
-| Multi-ref image synthesis (up to 14 refs), style anchor, character/arch sheets | `gemini_image_fusion` | Defaults to `gemini-nano-banana-2.1`. Set `preset` (`freeform`, `character_sheet`, `architectural_sheet`, `story_scene`, `pixel_sprite`), `aspect_ratio`, and `image_size`. |
-| Targeted regional image edit | `gemini_image_edit` | Modifies `source_image_path` using `edit_instruction` and up to 6 `extra_ref_paths` while preserving unmentioned regions. |
-| Imagen 3 generate / masked inpaint / outpaint / 4x upscale | `imagen_studio` | Automatically falls back to Gemini image models or Pillow Lanczos if Vertex-only Imagen endpoints are unavailable on Developer API keys. |
-| Stateful video gen, extend, edit, seamless loop | `gemini_video_studio` | Powered by `gemini-omni-1.2-flash` via `client.interactions.create`. Supports `start_frame_path` + `end_frame_path`, up to 6 `ref_media_paths`, `previous_interaction_id`, and `delivery="auto"`. |
-| Expressive TTS, custom voices, & Lyria 3.5 BGM | `gemini_audio_studio` | `mode="tts"` uses `speech_metadata` annotations so stage directions are never spoken aloud. Also supports `voice_design`, `voice_remix`, `voice_replicate`, `voice_list`, and `music`. |
-| Cache codebase, docs, or image anchors (up to 95% discount) | `gemini_context_cache` | Creates explicit cache (`cachedContents/...`) and writes a deterministic implicit prefix fallback in `.gemini-omni/cache/`. |
-| Run 10–100+ parallel AI tasks | `gemini_async_swarm` | Concurrency-limited `asyncio` swarm on `gemini-3.8-flash` (or any model), supporting `cached_content_name`, `response_json_schema`, and direct `output_file` writing. |
-| Filter 15–30 candidate images in one shot | `gemini_curate_refs` | Builds a numbered Pillow contact sheet and ranks top-k sharp, uncropped references with `CuratedRefsResponse`. |
-| Check spend, pricing table, estimate batch cost, set hard stop | `gemini_cost_and_budget` | Offline FinOps control (`summary`, `pricing_table`, `calculate_call`, `estimate_batch`, `set_budget_limit`, `reset_ledger`). |
-| *(Optional)* 3D/CAD palette, spec, RLAIF critique & autopatch | `vision_extract_3d_spec`, `vision_rlaif_3d_critic`, `argon_judge_and_autopatch` | Enabled by default; disable with `GEMINI_OMNI_ENABLE_3D_TOOLS=false` or `--no-3d-tools`. `argon_judge_and_autopatch` includes a 5-attempt circuit breaker and syntax validation. |
+Before writing or refactoring Google GenAI SDK code, **always pull live documentation first**:
+1. Call `gemini_search_docs(query=..., language="python")` (queries `https://gemini-api-docs-mcp.dev` with automatic `aistudio.google.com/llms.txt` fallback).
+2. Read the exact guide or chunk via `gemini_fetch_doc(chunk_id=...)` or `gemini_fetch_doc(slug_or_url="decisions-api")` before generating code.
+3. Always target `google-genai>=3.2.0` (`from google import genai`) and prefer `client.interactions` (never deprecated `google-generativeai` or shut-down Imagen models).
 
-## Recommended Workflows
+## Gemini 4 & Specialized Model Selection Guide
 
-1. **Pre-Flight Cost Check & Budget Safety**:
-   - Before running a large `gemini_async_swarm` or multi-clip `gemini_video_studio` batch, call `gemini_cost_and_budget(action="estimate_batch", ...)` and `gemini_cost_and_budget(action="summary")`.
-   - Respect `OMNI_HARD_STOP_LIMIT_USD` (default `50.0` USD). If a hard stop triggers, inform the user before calling `set_budget_limit`.
-2. **Cache-First Swarms**:
-   - When multiple workers share a spec, style guide, or codebase, call `gemini_context_cache` once, then pass the returned `cached_content_name` into `gemini_async_swarm` or `argon_judge_and_autopatch`.
-3. **Stateful Multi-Turn Video Production**:
-   - Start with `gemini_video_studio(action="generate", ...)` and reuse the returned `interaction_id` as `previous_interaction_id` for `action="extend"` or `action="edit"`.
-   - Use `delivery="auto"` (default) so `1080p`, `4k`, or `>10s` clips switch cleanly to URI download instead of hitting inline payload limits.
-4. **3D RLAIF Loop**:
-   - Extract spec with `vision_extract_3d_spec`, run fast intermediate checks with `vision_rlaif_3d_critic`, and invoke `argon_judge_and_autopatch` as the final Supreme Judge (`score >= 95`).
+| Tier / Model | Best For | Thinking Levels | Paid Rates (per 1M) |
+| --- | --- | --- | --- |
+| `gemini-4-carbon` | Deepest coding, architecture & 3D judge | `low`, `medium` (default), `high` | `$2.00` / `$10.00` intro thru Nov 30 (`$4.00` / `$20.00` after) |
+| `gemini-4-neon` | Fast frontier coding & complex science | `low`, `medium`, `high` (default), `xhigh` | `$3.00` / `$15.00` |
+| `gemini-4-hydrogen` | Everyday coding, swarms, vision QA (Free + Paid) | `low`, `medium`, `high` (default), `xhigh` | `$1.50` / `$7.50` |
+| `gemini-3.5-flash-lite` | Ultra-fast high-volume classification/drafts | `minimal` (default), `low`, `medium`, `high` | `$0.30` / `$2.50` |
+| `gemini-decision-1` | Zero-output-token `noul`/`choice`/`score` routing | Forward-pass calibrated probabilities | `$0.10` input / `$0.00` output |
+| `gemini-3.5-transcribe` | Audio transcription (`verbatim`, diarization, `smart`) | — | `$2.00` audio in / `$12.00` text out (~`$0.005`/min) |
+| `gemini-embedding-2` | Text, image, audio, video & PDF embeddings | — | `$0.20` text / `$0.45` img / `$6.50` audio / `$12.00` video |
+
+## Full 16-Tool Reference
+
+### Core Tools (13 Always Enabled)
+- **Live Docs Puller ($0.00):** `gemini_search_docs`, `gemini_fetch_doc`
+- **Decisions & Agents:** `gemini_decide` (`noul` / `choice` / `score` up to 1,000 questions/call), `gemini_deep_research` (`deep-research-preview-04-2026`, background polling), `gemini_embed` (unified multimodal vectors + similarity matrix)
+- **Nano Banana 2.1 Images (Imagen replaced):** `gemini_image_fusion` (up to 14 refs + style anchor), `gemini_image_edit` (`edit`, `inpaint`, `outpaint`, `upscale` 2x/4x)
+- **Video & Audio Studio:** `gemini_video_studio` (`gemini-omni-1.2-flash`, `3s`–`15s`, extend/edit/loop, auto URI delivery), `gemini_audio_studio` (`tts`, `transcribe`, `music` via Lyria 3.5, `voice_design`/`voice_remix`/`voice_replicate`/`voice_list`)
+- **Context & Swarms:** `gemini_context_cache` (Gemini 4 deterministic implicit prefix bundles + explicit caching for 3.x), `gemini_async_swarm` (up to 64 parallel workers on `gemini-4-hydrogen`), `gemini_curate_refs`
+- **FinOps Budget Guard:** `gemini_cost_and_budget` (`summary`, `pricing_table`, `calculate_call`, `estimate_batch`, `set_budget_limit`, `reset_ledger`)
+
+### Optional 3D/CAD RLAIF Suite (Disable with `--no-3d-tools` or `GEMINI_OMNI_ENABLE_3D_TOOLS=false`)
+- `vision_extract_3d_spec` (`gemini-4-hydrogen` + PIL HEX telemetry)
+- `vision_rlaif_3d_critic` (`gemini-4-hydrogen` multi-angle critique)
+- `gemini_3d_judge_and_autopatch` (`gemini-4-carbon` judge + `gemini-4-hydrogen` patcher with `ast.parse` guard and 5-retry circuit breaker)

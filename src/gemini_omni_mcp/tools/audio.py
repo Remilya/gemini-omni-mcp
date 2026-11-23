@@ -1,4 +1,4 @@
-"""Gemini TTS, Custom Voices API, and Lyria 3.5 music generation tools."""
+"""Gemini TTS, Custom Voices API, Gemini 3.5 Transcribe STT, and Lyria 3.5 music generation."""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ from typing import Any, Literal, Optional
 
 from google.genai import types
 
-from gemini_omni_mcp.client import generate_content_with_retry, get_client
+from gemini_omni_mcp.client import api_retry, generate_content_with_retry, get_client
 from gemini_omni_mcp.config import logger, resolve_path
 from gemini_omni_mcp.media import (
     extract_audio_bytes,
@@ -21,6 +21,7 @@ from gemini_omni_mcp.pricing import record_api_usage
 async def gemini_audio_studio(
     mode: Literal[
         "tts",
+        "transcribe",
         "music",
         "voice_design",
         "voice_remix",
@@ -37,15 +38,102 @@ async def gemini_audio_studio(
     speakers: Optional[list[dict[str, str]]] = None,
     dialogue_turns: Optional[list[dict[str, str]]] = None,
     voice_config_params: Optional[dict[str, Any]] = None,
+    input_audio_path: Optional[str] = None,
+    transcription_mode: Literal["verbatim", "smart"] = "verbatim",
+    enable_diarization: bool = False,
+    enable_word_timestamps: bool = False,
+    custom_vocabulary: Optional[list[str]] = None,
+    language_codes: Optional[list[str]] = None,
 ) -> dict[str, Any]:
-    """Voice synthesis (`gemini-3.8-flash-tts`), Voices API (`design`/`remix`/`replicate`), & Lyria 3.5 music.
+    """Voice synthesis, speech-to-text transcription, custom Voices API, & Lyria 3.5 music.
 
-    - `mode="tts"`: Uses Interactions API `speech_metadata` annotations so stage directions are
-      never spoken aloud; supports single-speaker (`voice_name`) and multi-speaker (`speakers` + `dialogue_turns`).
-    - `mode="voice_design"` / `"voice_remix"` / `"voice_replicate"`: Creates custom persistent voices.
-    - `mode="voice_list"` / `"voice_get"` / `"voice_delete"`: Manages the Voice Library.
+    - `mode="tts"`: Uses `gemini-3.8-flash-tts` Interactions API `speech_metadata` annotations
+      so stage directions are never spoken aloud; supports single/multi-speaker dialogue.
+    - `mode="transcribe"`: Uses `gemini-3.5-transcribe` (`verbatim` with optional diarization/word
+      timestamps, or `smart` disfluency removal + formatting, or `custom_vocabulary` biasing).
+    - `mode="voice_design"` / `"voice_remix"` / `"voice_replicate"` / `"voice_list"` / `"voice_get"` / `"voice_delete"`:
+      Manages custom vocal personas via `client.voices`.
     - `mode="music"`: Composes audio via `lyria-3.5` / `lyria-3-pro-preview` / `lyria-3-clip-preview`.
     """
+    if mode == "transcribe":
+        if not input_audio_path or not input_audio_path.strip():
+            raise ValueError("input_audio_path is required for mode='transcribe'.")
+        if custom_vocabulary and (enable_diarization or enable_word_timestamps):
+            raise ValueError(
+                "custom_vocabulary cannot be combined with enable_diarization or enable_word_timestamps."
+            )
+        if transcription_mode == "smart" and (enable_diarization or enable_word_timestamps):
+            raise ValueError(
+                "enable_diarization and enable_word_timestamps require transcription_mode='verbatim'."
+            )
+        in_path = resolve_path(input_audio_path)
+        if not in_path.is_file():
+            raise FileNotFoundError(f"Audio file not found: {in_path}")
+
+        client = get_client(context="gemini_audio_studio:transcribe", api_version="v1beta")
+        uploaded = await asyncio.to_thread(client.files.upload, file=str(in_path))
+        while (
+            getattr(uploaded, "state", None)
+            and getattr(uploaded.state, "name", str(uploaded.state)) == "PROCESSING"
+        ):
+            await asyncio.sleep(1.5)
+            uploaded = await asyncio.to_thread(client.files.get, name=uploaded.name)
+
+        mode_cfg: dict[str, Any] = {"type": transcription_mode}
+        if enable_diarization:
+            mode_cfg["diarization_mode"] = "speaker"
+        if enable_word_timestamps:
+            mode_cfg["timestamp_granularities"] = ["word"]
+
+        t_cfg: dict[str, Any] = {"mode": mode_cfg}
+        if custom_vocabulary:
+            t_cfg["custom_vocabulary"] = list(custom_vocabulary)[:1000]
+        if language_codes is not None:
+            t_cfg["language_codes"] = list(language_codes)
+
+        @api_retry
+        def _call_transcribe() -> Any:
+            return client.interactions.create(
+                model="gemini-3.5-transcribe",
+                input=[uploaded],
+                generation_config={"transcription_config": t_cfg},
+            )
+
+        interaction = await asyncio.to_thread(_call_transcribe)
+        transcript = (getattr(interaction, "output_text", None) or "").strip()
+        if not transcript:
+            for out_item in getattr(interaction, "outputs", None) or []:
+                t = getattr(out_item, "text", None)
+                if isinstance(t, str) and t.strip():
+                    transcript = t.strip()
+                    break
+
+        usage = getattr(interaction, "usage", None) or getattr(interaction, "usage_metadata", None)
+        in_tok = int(getattr(usage, "total_input_tokens", None) or getattr(usage, "input_tokens", None) or 0) if usage else 0
+        out_tok = int(getattr(usage, "total_output_tokens", None) or getattr(usage, "output_tokens", None) or 0) if usage else 0
+        if in_tok == 0:
+            in_tok = max(100, in_path.stat().st_size // 1000)
+        if out_tok == 0:
+            out_tok = max(20, len(transcript) // 4)
+
+        cost_entry = record_api_usage(
+            tool_name="gemini_audio_studio",
+            model="gemini-3.5-transcribe",
+            tier="standard",
+            input_tokens=in_tok,
+            output_tokens=out_tok,
+            note=f"transcribe ({transcription_mode}) <- {in_path.name}",
+        )
+        return {
+            "status": "success",
+            "mode": "transcribe",
+            "model": "gemini-3.5-transcribe",
+            "transcription_mode": transcription_mode,
+            "input_audio_path": str(in_path),
+            "transcript": transcript,
+            "cost_usd": cost_entry["cost_usd"],
+        }
+
     client = get_client(context=f"gemini_audio_studio:{mode}")
     out_file = (
         resolve_path(output_audio_path)
@@ -375,5 +463,5 @@ async def gemini_audio_studio(
 
 
 def register(mcp: Any) -> None:
-    """Register audio tools on the MCP server instance."""
+    """Register audio, TTS, Voices, STT transcription, and Lyria tools on the MCP server."""
     mcp.tool()(gemini_audio_studio)

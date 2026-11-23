@@ -2,81 +2,107 @@
 
 <img src="assets/logo.svg" alt="Gemini Omni MCP Logo" width="110" />
 
-# Gemini Omni MCP
+# Gemini Omni MCP v2.0
 
-**Hepsi Bir Arada Google GenAI Multimodal & Agentic MCP Sunucusu**
+**Hepsi Bir Arada Google GenAI Multimodal, Decisions & Canlı Dokümantasyon MCP Sunucusu**
 
-*Nano Banana 2.1 · Gemini Omni 1.2 Flash Video · Gemini 3.8 Flash Async Swarm · Gemini 4 Argon · Imagen 3 · İfadeli TTS & Voices API · Lyria 3.5 Müzik · Context Caching · Gerçek Zamanlı USD Bütçe Kilidi*
+*Canlı Docs Puller · Gemini 4 (`Carbon`, `Neon`, `Hydrogen`) · Decisions API (`gemini-decision-1`) · Deep Research · Multimodal Embeddings · Nano Banana 2.1 · Gemini Omni 1.2 Flash Video · Transcribe STT & İfadeli TTS · Lyria 3.5 Müzik · Gerçek Zamanlı USD Bütçe Kilidi*
 
 [English](README.md) | **Türkçe**
 
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/downloads/)
 [![MCP Compatible](https://img.shields.io/badge/MCP-2.x%20%26%201.x-purple.svg)](https://modelcontextprotocol.io/)
-[![google-genai](https://img.shields.io/badge/google--genai-%3E%3D2.21.0-4285F4.svg)](https://github.com/googleapis/python-genai)
+[![google-genai](https://img.shields.io/badge/google--genai-%3E%3D3.2.0-4285F4.svg)](https://github.com/googleapis/python-genai)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
 </div>
 
 ---
 
-## Neden Gemini CLI Yerine MCP?
+## Neden Ayrı CLI Yerine MCP?
 
-Google ekipleri genelde kod editörünün yanında ayrı bir **Gemini CLI** oturumu açmayı önerir; bu da pencere değiştirmek, ayrı bir sohbet bağlamı taşımak ve üretilen çıktıları tek tek projeye aktarmak demektir.
+Editörün yanında harici bir CLI uygulaması açmak sürekli pencere değiştirmek, güncel olmayan eğitim verisiyle boğuşmak ve çıktıları elle projeye taşımak demektir.
 
-**`gemini-omni-mcp`, Google'ın tüm multimodal ve yüksek eşzamanlı GenAI ekosistemini doğrudan mevcut AI agent'ının içine (Antigravity, Claude Code, Cursor, Codex, VS Code, Claude Desktop) gömer.** Ekstra uygulama açmadan agent'ın tek adımda otonom görsel, video, ses, müzik ve paralel kod işleri üretmesini sağlar:
+**`gemini-omni-mcp` v2.0, Google'ın Kasım 2026 GenAI ekosistemini *ve* sıfır maliyetli Canlı Dokümantasyon Çekicisini (Live Docs Puller) doğrudan mevcut AI agent'ının içine (Antigravity, Claude Code, Cursor, Codex, VS Code, Claude Desktop) gömer:**
 
-| Özellik | Ayrı Gemini CLI Uygulaması | `gemini-omni-mcp` |
+| Özellik | Ayrı CLI Penceresi | `gemini-omni-mcp` v2.0 |
 | --- | --- | --- |
-| **İş Akışı Entegrasyonu** | Ayrı terminal açma ve bağlam kopyalama gerektirir | Antigravity, Claude Code, Cursor, Codex ve VS Code içinde doğrudan tool çağrısı |
-| **Multimodal Dosya Üretimi** | Çoğunlukla metin/kod sohbeti odaklı | PNG, MP4, WAV/MP3, contact sheet ve JSON çıktıları doğrudan çalışma dizinine kaydeder |
-| **Video & Ses Stüdyosu** | Ayrı script veya harici stüdyo ister | Durumlu `gemini-omni-1.2-flash` video (`extend`/`edit`/`loop`), TTS, Voice Design & Lyria 3.5 |
-| **Paralel İşçi Sürüsü (Swarm)** | Tek seferde tek etkileşimli istem | `gemini_async_swarm` + Context Caching ile aynı anda **64 paralel asenkron görev** |
+| **Canlı Resmi Dokümanlar** | Tarayıcı sekmesi veya ek MCP kurulumu gerekir | Dahili `gemini_search_docs` + `gemini_fetch_doc` (`gemini-api-docs-mcp.dev` + `llms.txt` yedekli) |
+| **Gemini 4 Ailesi & Swarm** | Tek seferde tek sohbet istemi | `gemini-4-carbon`, `gemini-4-neon`, `gemini-4-hydrogen` + aynı anda **64 paralel asenkron işçi** |
+| **Sıfır Token'lı Karar Motoru** | Yavaş metin üretimi + kırılgan JSON ayrıştırma | `gemini_decide` (`client.decisions.create`) ile tek seferde 1.000 `noul`/`choice`/`score` sorusu (0 çıktı token'ı) |
+| **Multimodal Dosya Üretimi** | Çıktıları elle kopyalama | PNG, MP4, WAV/MP3, Markdown raporları, contact sheet ve vektörleri doğrudan projeye yazar |
 | **Maliyet Güvenliği** | Otomatik USD harcama kesicisi yok | Canlı harcama defteri + otomatik `OMNI_HARD_STOP_LIMIT_USD` bütçe kilidi |
-| **Yapısal 3D / Görsel Kalite Kontrol** | Serbest metin çıktısı | Katı Pydantic v2 şemaları, PIL piksel örnekleme ve opsiyonel Blender RLAIF otonom yama |
 
 ---
 
-## Araç Matrisi (12 Araç: 9 Çekirdek + 3 Opsiyonel 3D/CAD)
+## Araç Matrisi (16 Araç: 13 Çekirdek + 3 Opsiyonel 3D/CAD)
 
-### Çekirdek Multimodal, Swarm & Maliyet Araçları (Her Zaman Aktif)
+### Çekirdek Araçlar (Her Zaman Aktif)
 
-| Araç | Birincil Model(ler) | Yetenekler |
-| --- | --- | --- |
-| `gemini_image_fusion` | `gemini-nano-banana-2.1`, `gemini-3-pro-image` | 14 adede kadar referans görsel + 1 stil çıpası birleştirme, `freeform` / `character_sheet` / `architectural_sheet` / `story_scene` / `pixel_sprite` ön ayarları, `0.5K`–`4K` `ImageConfig` |
-| `gemini_image_edit` | `gemini-nano-banana-2.1` | Görselin kalanını bozmadan bölgesel/konuşmalı düzenleme (6 adede kadar ek referans desteği) |
-| `imagen_studio` | `imagen-3.0-generate-002`, `imagen-3.0-capability-001`, `imagen-3.0-upscale-001` | Üretim, maskeli inpaint/outpaint ve 2x/4x yükseltme (Developer API anahtarlarında otomatik Gemini / Lanczos yedekleme) |
-| `gemini_video_studio` | `gemini-omni-1.2-flash`, `gemini-omni-1.1-flash` | `3s`–`15s` video üretimi, uzatma (`extend`), düzenleme (`edit`), kesintisiz döngü (`seamless_loop`), başlangıç-bitiş kare interpolasyonu, `1080p`/`4k` için otomatik URI indirme |
-| `gemini_audio_studio` | `gemini-3.8-flash-tts`, `gemini-3.8-flash-lite-tts`, `lyria-3.5` | `speech_metadata` ile sahne yönergelerini okumayan tek/çok konuşmacılı TTS, Voices API (`voice_design`, `voice_remix`, `voice_replicate`, `voice_list`) ve Lyria 3.5 müzik üretimi |
-| `gemini_context_cache` | `gemini-4-argon`, `gemini-3.8-flash` | %95'e varan girdi token indirimi için Context Caching (`client.caches.create`) + deterministik yerel implicit önbellek yedeği |
-| `gemini_async_swarm` | `gemini-3.8-flash` (veya seçilen model) | Code Execution, Google Search, JSON Schema ve doğrudan `output_file` yazımı ile 64 eşzamanlı işçiye kadar `asyncio` sürüsü |
-| `gemini_curate_refs` | `gemini-3.8-flash` | Aday görsellerden numaralı Pillow JPEG contact sheet oluşturur ve tek seferde en net `top_k` referansı seçer |
-| `gemini_cost_and_budget` | Çevrimdışı FinOps Motoru | Anlık harcama özeti (`summary`), 19 modelli `pricing_table`, `calculate_call`, `estimate_batch` (Standard vs Batch), `set_budget_limit`, `reset_ledger` |
+| Kategori | Araç | Model(ler) / Kaynak | Yetenekler |
+| --- | --- | --- | --- |
+| **Canlı Docs** | `gemini_search_docs` | `gemini-api-docs-mcp.dev` + `llms.txt` | Resmi Gemini API ve SDK dokümanlarını `language`, `scope`, `source`, `api` filtreleriyle canlı arar (\$0.00) |
+| **Canlı Docs** | `gemini_fetch_doc` | `gemini-api-docs-mcp.dev` + `aistudio.google.com` | `chunk_id` parçalarını veya izinli HTTPS `.md` doküman sayfalarını temiz Markdown olarak çeker (\$0.00) |
+| **Decisions** | `gemini_decide` | `gemini-decision-1` | Metin, PDF, ses, görsel ve video üzerinde tek ileri geçişle `noul` (evet/hayır), `choice` ve `score` olasılıkları (0 çıktı token'ı) |
+| **Agents** | `gemini_deep_research` | `deep-research-preview-04-2026`, `deep-research-max-preview-04-2026`, `antigravity-preview-09-2026` | Interactions API üzerinden arka planda otonom çok adımlı araştırma başlatır, izler ve Markdown raporu kaydeder |
+| **Embeddings** | `gemini_embed` | `gemini-embedding-2` | Metin, görsel, ses, video ve PDF için birleşik multimodal vektörler + ikili kosinüs benzerlik matrisi |
+| **Görsel** | `gemini_image_fusion` | `gemini-nano-banana-2.1`, `gemini-3.1-flash-image`, `gemini-3-pro-image` | 14 adede kadar referans + stil çıpası birleştirme, karakter/mimari/sprite ön ayarları, `0.5K`–`4K` `ImageConfig` |
+| **Görsel** | `gemini_image_edit` | `gemini-nano-banana-2.1` | Bölgesel düzenleme, maskeli `inpaint`/`outpaint` ve `2x`/`4x` AI yükseltme (Lanczos yedekli; kapatılan Imagen'in yerini alır) |
+| **Video** | `gemini_video_studio` | `gemini-omni-1.2-flash`, `gemini-omni-1.1-flash` | `3s`–`15s` video üretimi, `extend`, `edit`, `seamless_loop`, kareler arası geçiş, `1080p`/`4k` için otomatik URI indirme |
+| **Ses & Müzik** | `gemini_audio_studio` | `gemini-3.8-flash-tts`, `gemini-3.5-transcribe`, `lyria-3.5` | İfadeli TTS (`speech_metadata`), konuşma deşifresi (`verbatim`, konuşmacı ayrımı, kelime zaman damgası, `smart`, `custom_vocabulary`), Voices API ve Lyria 3.5 müzik |
+| **Önbellek** | `gemini_context_cache` | `gemini-4-carbon`, `gemini-4-hydrogen`, Gemini 3.x | Gemini 4 için deterministik implicit önbellek demeti (%95 indirim) + 3.x modelleri için açık `client.caches.create` |
+| **Swarm** | `gemini_async_swarm` | `gemini-4-hydrogen`, `gemini-4-neon`, `gemini-4-carbon` | `thinking_level` (`minimal`..`xhigh`), Code Execution, Google Search ve JSON Schema ile 64 paralel asenkron işçi |
+| **Görsel QA** | `gemini_curate_refs` | `gemini-4-hydrogen` | Numaralı Pillow JPEG contact sheet oluşturur ve en net `top_k` referansı tek seferde seçer |
+| **FinOps** | `gemini_cost_and_budget` | Çevrimdışı FinOps Motoru | Canlı `summary`, 24 modelli `pricing_table`, `calculate_call`, `estimate_batch`, `set_budget_limit`, `reset_ledger` |
 
 ### Opsiyonel 3D / CAD RLAIF Paketi (Varsayılan Açık; İsteğe Bağlı Kapatılabilir)
 
-Yalnızca **9 çekirdek araçla** hafif modda çalıştırmak için `GEMINI_OMNI_ENABLE_3D_TOOLS=false` ayarlayın veya `--no-3d-tools` bayrağını verin.
+Yalnızca **13 çekirdek araçla** hafif modda çalıştırmak için `GEMINI_OMNI_ENABLE_3D_TOOLS=false` ayarlayın veya `--no-3d-tools` kullanın.
 
 | Araç | Birincil Model(ler) | Yetenekler |
 | --- | --- | --- |
-| `vision_extract_3d_spec` | `gemini-3.8-flash` + PIL | Piksel medyanı HEX örnekleme + yapısal PBR malzeme paleti, 3D oranlar ve üçgen bütçesi spesifikasyonu |
-| `vision_rlaif_3d_critic` | `gemini-3.8-flash` | Çok açılı 3D render'ları referans görseller ve özel kurallarla kıyaslayarak koordinat/mesh düzeltme listesi üretir |
-| `argon_judge_and_autopatch` | `gemini-4-argon` + `gemini-3.8-flash` | Üst düzey 3D görsel ve kod denetçisi; `.py` scriptlerini yamalar, `ast.parse` sözdizimi kontrolü yapar, Blender/özel render çalıştırır, hatada yedekten geri döner ve 5 denemede devreyi keser |
+| `vision_extract_3d_spec` | `gemini-4-hydrogen` + PIL | Piksel medyanı HEX örnekleme + yapısal PBR malzeme paleti, 3D oranlar ve üçgen bütçesi spesifikasyonu |
+| `vision_rlaif_3d_critic` | `gemini-4-hydrogen` | Çok açılı 3D render'ları referanslar ve `spec_rules` ile kıyaslayarak koordinat/mesh düzeltmeleri üretir |
+| `gemini_3d_judge_and_autopatch` | `gemini-4-carbon` + `gemini-4-hydrogen` | Üst düzey 3D görsel ve kod denetçisi; `.py` scriptlerini `ast.parse` kontrolüyle yamalar, Blender/özel render çalıştırır, hatada geri sarar ve 5 denemede devreyi keser |
 
 ---
 
-## Hızlı Kurulum
+## Canlı Docs Puller & Resmi Google Agent Kurulumu
+
+`gemini-omni-mcp`, canlı dokümantasyon arama (`gemini_search_docs`) ve sayfa çekme (`gemini_fetch_doc`) araçlarını **API anahtarı gerektirmeden** ve `https://aistudio.google.com/llms.txt` yedeğiyle birlikte doğrudan MCP sunucusunun içine entegre eder.
+
+İsterseniz Google'ın bağımsız resmi araçlarını da yanına kurabilirsiniz:
+
+```bash
+# Bağımsız resmi Gemini Docs MCP sunucusu
+npx add-mcp "https://gemini-api-docs-mcp.dev"
+
+# Resmi Gemini API agent yetenekleri (güncel SDK sözdizimi ve kurallar)
+npx skills add google-gemini/gemini-skills --skill gemini-api-dev
+
+# Antigravity'de tek komutla eklenti kurulumu
+agy plugin install https://github.com/google-gemini/gemini-skills
+
+# Terminalden doğrudan Gemini API çağıran bağımsız Go CLI
+curl -fsSL https://raw.githubusercontent.com/google-gemini/gemini-api-cli/main/scripts/install.sh | bash
+```
+
+---
+
+## Hızlı Kurulum & İstemci Bağlantısı
 
 ### Gereksinimler
 - Python **3.11+** (veya [`uv`](https://docs.astral.sh/uv/))
-- **Gemini Developer API anahtarı** (`GEMINI_API_KEY` veya `GOOGLE_API_KEY`) — ya da Vertex AI kimlik bilgileri
+- `google-genai>=3.2.0` (`uv` veya `pip` ile otomatik kurulur)
+- Üretim çağrıları için `GEMINI_API_KEY` (veya `GOOGLE_API_KEY`) — Docs Puller anahtarsız da çalışır
 
 ### Seçenek A: `uvx` / `uv` ile Sıfır Kurulum (Önerilen)
 
 ```bash
-# Doğrudan GitHub üzerinden uvx ile çalıştırma
+# Doğrudan GitHub üzerinden uvx ile çalıştır
 uvx --from git+https://github.com/Remilya/gemini-omni-mcp gemini-omni-mcp
 
-# Veya yerel klondan çalıştırma
+# Veya yerel klondan çalıştır
 git clone https://github.com/Remilya/gemini-omni-mcp.git
 cd gemini-omni-mcp
 uv run gemini-omni-mcp --list-tools
@@ -86,32 +112,20 @@ uv run gemini-omni-mcp --list-tools
 
 ```bash
 pip install git+https://github.com/Remilya/gemini-omni-mcp.git
-# Geliştirici / düzenlenebilir kurulum:
-pip install -e .
-
 gemini-omni-mcp --version
 ```
 
----
-
-## AI Agent İstemcilerine Bağlama
-
 <details open>
-<summary><strong>Antigravity (Plugin Paketi veya MCP Yapılandırması)</strong></summary>
-
-Bu repo doğrudan **Antigravity Plugin** yapısıyla (`plugin.json`, `mcp_config.json`, `assets/logo.svg`, `skills/gemini-omni/SKILL.md`) birlikte gelir.
-
-Doğrudan `~/.gemini/antigravity/mcp_config.json` dosyanıza da ekleyebilirsiniz:
+<summary><strong>Antigravity / Claude Code / Cursor / Codex / VS Code Örnekleri</strong></summary>
 
 ```json
 {
   "mcpServers": {
     "gemini-omni": {
-      "command": "uv",
+      "command": "uvx",
       "args": [
-        "run",
-        "--directory",
-        "/path/to/gemini-omni-mcp",
+        "--from",
+        "git+https://github.com/Remilya/gemini-omni-mcp",
         "gemini-omni-mcp"
       ],
       "env": {
@@ -124,11 +138,7 @@ Doğrudan `~/.gemini/antigravity/mcp_config.json` dosyanıza da ekleyebilirsiniz
 }
 ```
 
-</details>
-
-<details>
-<summary><strong>Claude Code (CLI)</strong></summary>
-
+Claude Code CLI:
 ```bash
 claude mcp add gemini-omni \
   -e GEMINI_API_KEY="GEMINI_API_ANAHTARINIZ" \
@@ -138,119 +148,15 @@ claude mcp add gemini-omni \
 
 </details>
 
-<details>
-<summary><strong>Cursor / Claude Desktop / Windsurf (`mcp.json`)</strong></summary>
-
-```json
-{
-  "mcpServers": {
-    "gemini-omni": {
-      "command": "uvx",
-      "args": [
-        "--from",
-        "git+https://github.com/Remilya/gemini-omni-mcp",
-        "gemini-omni-mcp"
-      ],
-      "env": {
-        "GEMINI_API_KEY": "GEMINI_API_ANAHTARINIZ",
-        "OMNI_HARD_STOP_LIMIT_USD": "50.0"
-      }
-    }
-  }
-}
-```
-
-</details>
-
-<details>
-<summary><strong>Codex CLI (`~/.codex/config.toml`)</strong></summary>
-
-```toml
-[mcp_servers.gemini-omni]
-command = "uvx"
-args = ["--from", "git+https://github.com/Remilya/gemini-omni-mcp", "gemini-omni-mcp"]
-
-[mcp_servers.gemini-omni.env]
-GEMINI_API_KEY = "GEMINI_API_ANAHTARINIZ"
-OMNI_HARD_STOP_LIMIT_USD = "50.0"
-```
-
-</details>
-
-<details>
-<summary><strong>VS Code / GitHub Copilot (`.vscode/mcp.json`)</strong></summary>
-
-```json
-{
-  "servers": {
-    "gemini-omni": {
-      "type": "stdio",
-      "command": "uvx",
-      "args": [
-        "--from",
-        "git+https://github.com/Remilya/gemini-omni-mcp",
-        "gemini-omni-mcp"
-      ],
-      "env": {
-        "GEMINI_API_KEY": "${input:gemini_api_key}",
-        "OMNI_HARD_STOP_LIMIT_USD": "50.0"
-      }
-    }
-  },
-  "inputs": [
-    {
-      "type": "promptString",
-      "id": "gemini_api_key",
-      "description": "Google Gemini API Anahtarı",
-      "password": true
-    }
-  ]
-}
-```
-
-</details>
-
 ---
 
-## Gerçek Zamanlı USD Harcama Takibi & Sert Bütçe Kilidi
+## Gerçek Zamanlı USD Harcama Takibi & Bütçe Kilidi
 
-Paralel swarm görevleri veya 1080p/4K video üretimi kontrolsüz bırakıldığında API faturasını hızla yükseltebilir. `gemini-omni-mcp`, her çağrıdaki token, görsel, video, ses ve önbellek tüketimini `<workspace>/.gemini-omni/usage_ledger.json` dosyasına kaydeder:
+Tüm token, görsel, video, ses ve önbellek kullanımları `<workspace>/.gemini-omni/usage_ledger.json` dosyasına yazılır:
 
 - **Varsayılan limit:** `$50.00 USD` (`OMNI_HARD_STOP_LIMIT_USD=50.0`)
-- **Otomatik devre kesici:** Toplam harcama limite ulaştığında (veya sıradaki tahmini çağrı limiti aşacaksa) defter kilitlenir, bellek içi API anahtarları temizlenir ve yeni ağ çağrısı yapılmadan `HardBudgetStopError` fırlatılır.
-- **Araç üzerinden anlık yönetim:**
-  - Harcama ve model dağılımını gör: `gemini_cost_and_budget(action="summary")`
-  - Toplu iş öncesi maliyet hesapla: `gemini_cost_and_budget(action="estimate_batch", model="gemini-3.8-flash", num_items=100, ...)`
-  - Limiti yükselt veya kilidi aç: `gemini_cost_and_budget(action="set_budget_limit", new_budget_limit_usd=100.0)`
-  - Sert limiti kapatmak için: `OMNI_HARD_STOP_LIMIT_USD=0` veya `--budget-limit 0`
-
----
-
-## Ortam Değişkenleri Referansı
-
-| Değişken | Varsayılan | Açıklama |
-| --- | --- | --- |
-| `GEMINI_API_KEY` | — | Gemini Developer API anahtarı (veya `GOOGLE_API_KEY`) |
-| `OMNI_HARD_STOP_LIMIT_USD` | `50.0` | USD sert bütçe limiti (`0` verilirse devre dışı kalır) |
-| `GEMINI_OMNI_WORKSPACE` | Çalışma dizini (`cwd`) | Göreli yollar, önbellek ve harcama defteri için kök dizin |
-| `GEMINI_OMNI_LEDGER_PATH` | `<workspace>/.gemini-omni/usage_ledger.json` | Harcama defteri JSON dosyasının özel yolu |
-| `GEMINI_OMNI_ENABLE_3D_TOOLS` | `true` | Opsiyonel 3 3D/CAD aracını kapatmak için `false` yapın |
-| `GOOGLE_GENAI_USE_VERTEXAI` | `false` | Google Cloud Vertex AI kullanımı için `true` yapın |
-| `GOOGLE_CLOUD_PROJECT` | — | Vertex AI için GCP Proje Kimliği |
-| `GOOGLE_CLOUD_LOCATION` | `us-central1` | Vertex AI bölgesi |
-| `BLENDER_PATH` | Otomatik algılanır | `argon_judge_and_autopatch` için Blender çalıştırılabilir dosya yolu |
-
----
-
-## CLI Seçenekleri
-
-```bash
-gemini-omni-mcp --help
-gemini-omni-mcp --list-tools
-gemini-omni-mcp --no-3d-tools --list-tools
-gemini-omni-mcp --workspace /proje/dizini --budget-limit 25.0
-gemini-omni-mcp --transport streamable-http
-```
+- **Otomatik devre kesici:** Limit aşıldığında defter kilitlenir, bellek içi API anahtarları silinir ve `HardBudgetStopError` fırlatılır.
+- **Araç komutları:** `summary`, `estimate_batch`, `set_budget_limit` (`0` verilirse kilidi kapatır), `reset_ledger`.
 
 ---
 
@@ -261,10 +167,10 @@ git clone https://github.com/Remilya/gemini-omni-mcp.git
 cd gemini-omni-mcp
 uv sync --extra dev
 
-# Çevrimdışı birim testlerini çalıştır (API anahtarı gerekmez)
+# Çevrimdışı birim testleri (API anahtarı gerekmez)
 uv run --extra dev pytest -v
 
-# Kayıtlı araçları listele
+# Kayıtlı araçları kontrol et
 uv run gemini-omni-mcp --list-tools
 ```
 
@@ -272,4 +178,4 @@ uv run gemini-omni-mcp --list-tools
 
 ## Lisans
 
-MIT Lisansı — ayrıntılar için [LICENSE](LICENSE) dosyasına bakın.
+MIT Lisansı — [LICENSE](LICENSE).

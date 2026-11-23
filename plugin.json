@@ -1,13 +1,13 @@
 {
   "name": "gemini-omni",
   "displayName": "Gemini Omni MCP",
-  "version": "1.0.0",
-  "description": "All-in-one Google GenAI multimodal and agentic MCP server: Nano Banana 2.1 image fusion/editing, Gemini Omni video studio, Gemini 3.8 Flash async swarm, Context Caching, TTS/Voices/Lyria 3.5 music, and real-time USD budget guard.",
+  "version": "2.0.0",
+  "description": "All-in-one Google GenAI v2.0 MCP server: Live Gemini API Docs Puller, Gemini 4 (Carbon/Neon/Hydrogen) async swarms, Decisions API (gemini-decision-1), Deep Research, Multimodal Embeddings, Nano Banana 2.1, Gemini Omni video, Transcribe/TTS/Lyria 3.5, and USD budget guard.",
   "logo": "assets/logo.svg",
   "suggestedPrompts": [
-    "Generate a 1080p 10s showcase video with gemini_video_studio and check the estimated session cost",
-    "Run a parallel gemini_async_swarm batch to analyze and refactor multiple source files with context caching",
-    "Synthesize a multi-speaker dialogue audio clip with gemini_audio_studio and check my remaining USD budget"
+    "Search live Gemini API docs for the Interactions API and Decisions API, then scaffold a working Python workflow",
+    "Use gemini_decide to route incoming customer tickets with noul, choice, and score questions and check session USD spend",
+    "Generate a 1080p showcase clip with gemini_video_studio and run a parallel gemini-4-hydrogen swarm over my files"
   ],
   "author": {
     "name": "Remilya",

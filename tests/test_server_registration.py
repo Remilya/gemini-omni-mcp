@@ -12,33 +12,40 @@ from gemini_omni_mcp.tools.budget import gemini_cost_and_budget
 from gemini_omni_mcp.tools.swarm import gemini_async_swarm
 
 
-def test_server_registers_all_12_tools_by_default():
+def test_server_registers_all_16_tools_by_default():
     server = create_server(enable_3d_tools=True)
     tools = asyncio.run(server.list_tools())
     names = {t.name for t in tools}
     assert names == set(CORE_TOOL_NAMES) | set(OPTIONAL_3D_TOOL_NAMES)
-    assert len(names) == 12
+    assert len(names) == 16
 
 
-def test_server_registers_9_core_tools_when_3d_disabled():
+def test_server_registers_13_core_tools_when_3d_disabled():
     server = create_server(enable_3d_tools=False)
     tools = asyncio.run(server.list_tools())
     names = {t.name for t in tools}
     assert names == set(CORE_TOOL_NAMES)
-    assert len(names) == 9
+    assert len(names) == 13
     for excluded in OPTIONAL_3D_TOOL_NAMES:
         assert excluded not in names
 
 
 def test_budget_tool_offline_actions():
     pricing = asyncio.run(gemini_cost_and_budget(action="pricing_table"))
-    assert "gemini-4-argon" in pricing["models"]
-    assert "gemini-omni-1.2-flash" in pricing["models"]
+    for expected in (
+        "gemini-4-carbon",
+        "gemini-4-neon",
+        "gemini-4-hydrogen",
+        "gemini-decision-1",
+        "gemini-3.5-transcribe",
+        "gemini-omni-1.2-flash",
+    ):
+        assert expected in pricing["models"]
 
     calc = asyncio.run(
         gemini_cost_and_budget(
             action="calculate_call",
-            model="gemini-3.8-flash",
+            model="gemini-4-hydrogen",
             input_tokens=100_000,
             output_tokens=20_000,
         )
@@ -49,7 +56,7 @@ def test_budget_tool_offline_actions():
     batch = asyncio.run(
         gemini_cost_and_budget(
             action="estimate_batch",
-            model="gemini-3.8-flash",
+            model="gemini-4-hydrogen",
             num_items=25,
             avg_input_tokens=5000,
             avg_output_tokens=1000,

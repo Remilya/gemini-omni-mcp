@@ -19,8 +19,9 @@ async def gemini_curate_refs(
     goal: str = "Identify the sharpest, best-framed reference images across distinct angles and details",
     top_k: int = 8,
     save_contact_sheet_path: Optional[str] = None,
+    model: str = "gemini-4-hydrogen",
 ) -> dict[str, Any]:
-    """Curate a batch of candidate images in one shot using a numbered contact grid and Gemini 3.8 Flash.
+    """Curate a batch of candidate images in one shot using a numbered contact grid and Gemini 4 Hydrogen.
 
     Rejects blurry, heavily cropped, watermarked, or occluded images and returns the top-ranked
     reference paths with per-image view categorization and descriptions.
@@ -66,7 +67,7 @@ async def gemini_curate_refs(
     response = await asyncio.to_thread(
         generate_content_with_retry,
         client,
-        "gemini-3.8-flash",
+        model,
         contents,
         config,
         False,
@@ -81,7 +82,7 @@ async def gemini_curate_refs(
         selected_paths.append(item.file_path)
 
     return {
-        "model": "gemini-3.8-flash",
+        "model": model,
         "selected_image_paths": selected_paths,
         "selected_refs": [r.model_dump() for r in parsed.selected_refs[:top_k]],
         "rejected_indices": parsed.rejected_indices,
